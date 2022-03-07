@@ -17,23 +17,16 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 object PubMedRetrievalService {
 
-    //    private val ncbiEmail = System.getenv("NCBI_EMAIL")
-    //    private val ncbiApiKey = System.getenv("NCBI_API_KEY")
-    private const val ncbiEmail = "batteryparkdev@gmail.com"
-    private const val ncbiApiKey = "8ea2dc1ff16df40319a83d259764f641a208"
+    private val ncbiEmail = System.getenv("NCBI_EMAIL")
+    private val ncbiApiKey = System.getenv("NCBI_API_KEY")
     private val dbFactory = DocumentBuilderFactory.newInstance()
     private val dBuilder = dbFactory.newDocumentBuilder()
     private val ncbiDelay: Long = 10L
-
-    // ApplicationPropertiesService.resolvePropertyAsLong("ncbi.request.delay.milliseconds")
     private const val pubMedTemplate =
         "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml"
     private val citationTemplate =
         "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_citedin" +
                 "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
-    /*
-    https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_refs&id=21876726
-     */
     private val referenceTemplate =
         "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_refs" +
                 "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
@@ -112,7 +105,6 @@ object PubMedRetrievalService {
         val url = referenceTemplate.replace(pubMedToken, pubmedId.toString())
             .replace("NCBIEMAIL", ncbiEmail)
             .replace("APIKEY", ncbiApiKey)
-        println("++++Reference url = $url")
         val referenceSet = mutableSetOf<Int>()
         try {
             val text = URL(url).readText(Charset.defaultCharset())
@@ -131,7 +123,7 @@ object PubMedRetrievalService {
             LogService.logError("++++  EXCEPTION getting reference set for $pubmedId")
             LogService.logException(e)
         }
-        println("+++Reference set size = ${referenceSet.size}")
+        LogService.logFine("+++Reference set size = ${referenceSet.size}")
         return referenceSet.toSet()
     }
 }

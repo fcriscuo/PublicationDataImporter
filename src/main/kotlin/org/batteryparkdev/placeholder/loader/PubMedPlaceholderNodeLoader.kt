@@ -76,17 +76,15 @@ class PubMedPlaceholderNodeLoader(
             }
     }
 }
-
+/*
+Integration test
+TODO: remove in production version
+ */
 fun main() {
     // delete all Publication nodes
-    LogService.logInfo("Deleting all existing Publication nodes in 10 seconds")
-    //Thread.sleep(10_000)
+    LogService.logInfo("WARNING: Deleting all existing Publication nodes in 10 seconds")
+    Thread.sleep(10_000)
     Neo4jConnectionService.executeCypherCommand("MATCH (p:Publication) DETACH DELETE (p)")
-    /*
-     private val pubId: String, private val parentId: String,
-    private val parentLabel: String, private val parentIdProperty: String
-     */
-    //listOf("11433365", "9242921","14570049","9126736","11728327","12537518","9242921" )
     PubMedPlaceholderNodeLoader("21876726","GO:1902494", "GoTerm",
     "go_id").registerPubMedPublication()
     PubMedPlaceholderNodeLoader("21876726","GO:1902494", "GoTerm",

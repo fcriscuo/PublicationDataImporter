@@ -26,8 +26,4 @@ object PubMedPublicationDao {
         return Neo4jConnectionService.executeCypherCommand(merge)
     }
 
-    /*
-    Public function to find PubMed placeholder nodes
-     */
-
 }
