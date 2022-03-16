@@ -69,6 +69,14 @@
     </pluginRepositories>
 
     <dependencies>
+        <!--local dependency for Neo4jService -->
+        <dependency>
+            <groupId>org.batteryparkdev</groupId>
+            <artifactId>Neo4jService</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/Neo4jService-1.0-SNAPSHOT.jar</systemPath>
+        </dependency>
         <dependency>
             <groupId>io.github.microutils</groupId>
             <artifactId>kotlin-logging-jvm</artifactId>
