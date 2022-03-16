@@ -36,10 +36,10 @@ object PubMedRetrievalService {
   Return an Either<Exception, PubMedArticle to deal with NCBI
   service disruptions
    */
-    fun retrievePubMedArticle(pubmedId: Int): Either<Exception, PubmedArticle> {
+    fun retrievePubMedArticle(pubmedId: String): Either<Exception, PubmedArticle> {
         Thread.sleep(ncbiDelay)  // Accommodate NCBI maximum request rate
         val url = pubMedTemplate
-            .replace(pubMedToken, pubmedId.toString())
+            .replace(pubMedToken, pubmedId)
         return try {
             val text = URL(url).readText(Charset.defaultCharset())
             val parser = PubmedParser()
@@ -101,7 +101,7 @@ object PubMedRetrievalService {
     Function to retrieve the PubMed Ids of the articles referenced by
     the specified PubMed Id
      */
-    private fun retrieveReferenceIds(pubmedId: Int): Set<Int> {
+    fun retrieveReferenceIds(pubmedId: Int): Set<Int> {
         val url = referenceTemplate.replace(pubMedToken, pubmedId.toString())
             .replace("NCBIEMAIL", ncbiEmail)
             .replace("APIKEY", ncbiApiKey)
@@ -130,13 +130,14 @@ object PubMedRetrievalService {
 
 fun main() {
     // test PubMedArticle retrieval
-    when (val retEither = PubMedRetrievalService.retrievePubMedArticle(26050619)) {
+    when (val retEither = PubMedRetrievalService.retrievePubMedArticle("26050619")) {
         is Either.Right -> {
-            val article = retEither.value
-            println("Title: ${article.medlineCitation.article.articleTitle.getvalue()}")
-            PubMedRetrievalService.retrieveCitationIds(26050619).stream()
+            val publication = retEither.value
+            println("Title: ${publication.medlineCitation.article.articleTitle.getvalue()}")
+            val pubmedId = publication.medlineCitation.pmid.getvalue()
+            PubMedRetrievalService.retrieveCitationIds(pubmedId.toInt()).stream()
                 .forEach { cit -> println(cit) }
-            PubMedRetrievalService.generateReferencePlaceholderNodes(26050619).stream()
+            PubMedRetrievalService.generateReferencePlaceholderNodes(pubmedId.toInt()).stream()
                 .forEach { ref -> println("Placeholder $ref") }
         }
         is Either.Left -> {

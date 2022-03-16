@@ -25,7 +25,7 @@ data class PubMedEntry(
        Secondary label should be one of (PubMed, PubMedReference, PubMedCitation)
         */
         fun parsePubMedArticle(pubmedArticle: PubmedArticle,
-                               secondaryLabel: String = "PubMed", parentId: Int = 0): PubMedEntry {
+                               secondaryLabel: String = " ", parentId: Int = 0): PubMedEntry {
             val pmid = pubmedArticle.medlineCitation.pmid.getvalue().toInt()
             val pmcid = resolveArticleIdByType(pubmedArticle, "pmc")
             val doiid = resolveArticleIdByType(pubmedArticle, "doi")

@@ -30,7 +30,7 @@ class PubMedPlaceholderNodeLoader(
 
     fun registerPubMedPublication() {
         // check if this node id has been previously loaded
-        when (Neo4jUtils.publicationNodeExistsPredicate(pubId)) {
+        when (Neo4jUtils.nodeExistsPredicate(NodeIdentifier(publicationLabel,pubIdProperty, pubId ))) {
             true -> updateExistingPublicationNode()
             false -> createNewPublicationNode()
         }
@@ -39,7 +39,10 @@ class PubMedPlaceholderNodeLoader(
     private fun updateExistingPublicationNode() {
         // determine if the existing node already has a PubMed label
         // that means its References have already been created
-        val isExistingPubMedNode = Neo4jUtils.publicationIdAndLabelPredicate(pubId, pubmedLabel)
+        // otherwise it means that the current node was formerly labeled as a Reference node
+        // but is now also being labelled a PubMed node and its References need to be
+        // retrieved
+        val isExistingPubMedNode = Neo4jUtils.nodeExistsPredicate(NodeIdentifier(pubmedLabel,pubIdProperty, pubId ))
         createNewPublicationNode()
         // load references
         if (isExistingPubMedNode.not()) {
