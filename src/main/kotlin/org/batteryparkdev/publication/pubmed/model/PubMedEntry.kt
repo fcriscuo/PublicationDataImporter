@@ -34,7 +34,7 @@ data class PubMedEntry(
             val journalIssue = resolveJournalIssue(pubmedArticle)
             val title = modifyInternalQuotes( pubmedArticle.medlineCitation.article.articleTitle.getvalue())
             val abstract = modifyInternalQuotes( resolveAbstract(pubmedArticle))
-            val citations = PubMedRetrievalService.retrieveCitationIds(pmid)
+            val citations = PubMedRetrievalService.retrieveCitationIds(pmid.toString())
 
 
             return PubMedEntry(

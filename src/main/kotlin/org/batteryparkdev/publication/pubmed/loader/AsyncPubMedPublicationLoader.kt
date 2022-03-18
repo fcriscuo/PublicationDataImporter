@@ -79,7 +79,7 @@ object AsyncPubMedPublicationLoader {
     private fun CoroutineScope.loadPubMedEntries(entries: ReceiveChannel<PubMedEntry>) =
         produce<PubMedEntry> {
             for (entry in entries){
-                PubMedPublicationDao.mergePubMedEntry(entry)
+                PubMedPublicationDao.loadPubmedEntry(entry)
                 send(entry)
                 delay(20)
             }

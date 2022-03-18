@@ -21,16 +21,22 @@ object PubMedRetrievalService {
     private val ncbiApiKey = System.getenv("NCBI_API_KEY")
     private val dbFactory = DocumentBuilderFactory.newInstance()
     private val dBuilder = dbFactory.newDocumentBuilder()
-    private val ncbiDelay: Long = 10L
-    private const val pubMedTemplate =
-        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml"
-    private val citationTemplate =
-        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_citedin" +
-                "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
-    private val referenceTemplate =
-        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_refs" +
-                "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
-    private const val pubMedToken = "PUBMEDID"
+    const val ncbiDelay: Long = 100L   // 333 milliseconds w/o registered account
+
+    private fun generateEutilsURLByType(type: String, pubmedId: String):String {
+       val template = when(type.lowercase()) {
+           "pubmed" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml" +
+                   "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
+           "citation" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_citedin" +
+                   "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
+           "reference" ->"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_refs" +
+                   "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
+           else -> "$type is an invalid URL type"
+       }
+       return template.replace("PUBMEDID", pubmedId)
+            .replace("NCBIEMAIL", ncbiEmail)
+            .replace("APIKEY", ncbiApiKey)
+    }
 
     /*
   Return an Either<Exception, PubMedArticle to deal with NCBI
@@ -38,8 +44,7 @@ object PubMedRetrievalService {
    */
     fun retrievePubMedArticle(pubmedId: String): Either<Exception, PubmedArticle> {
         Thread.sleep(ncbiDelay)  // Accommodate NCBI maximum request rate
-        val url = pubMedTemplate
-            .replace(pubMedToken, pubmedId)
+        val url = generateEutilsURLByType("pubmed", pubmedId)
         return try {
             val text = URL(url).readText(Charset.defaultCharset())
             val parser = PubmedParser()
@@ -50,10 +55,8 @@ object PubMedRetrievalService {
         }
     }
 
-    fun retrieveCitationIds(pubmedId: Int): Set<Int> {
-        val url = citationTemplate.replace(pubMedToken, pubmedId.toString())
-            .replace("NCBIEMAIL", ncbiEmail)
-            .replace("APIKEY", ncbiApiKey)
+    fun retrieveCitationIds(pubmedId: String): Set<Int> {
+        val url = generateEutilsURLByType("citation", pubmedId.toString())
         val citationSet = mutableSetOf<Int>()
         try {
             val text = URL(url).readText(Charset.defaultCharset())
@@ -82,7 +85,7 @@ object PubMedRetrievalService {
      */
     fun generateReferencePlaceholderNodes(pubmedId: Int): Set<PlaceholderNode> {
         val placeholderSet = mutableSetOf<PlaceholderNode>()
-        retrieveReferenceIds(pubmedId).forEach { ref ->
+        retrieveReferenceIds(pubmedId.toString()).forEach { ref ->
             run {
                 val parentNode = NodeIdentifier("Publication", "pub_id", pubmedId.toString(),
                 "PubMed")
@@ -101,10 +104,8 @@ object PubMedRetrievalService {
     Function to retrieve the PubMed Ids of the articles referenced by
     the specified PubMed Id
      */
-    fun retrieveReferenceIds(pubmedId: Int): Set<Int> {
-        val url = referenceTemplate.replace(pubMedToken, pubmedId.toString())
-            .replace("NCBIEMAIL", ncbiEmail)
-            .replace("APIKEY", ncbiApiKey)
+    fun retrieveReferenceIds(pubmedId: String): Set<Int> {
+        val url = generateEutilsURLByType("reference", pubmedId.toString())
         val referenceSet = mutableSetOf<Int>()
         try {
             val text = URL(url).readText(Charset.defaultCharset())
@@ -128,20 +129,3 @@ object PubMedRetrievalService {
     }
 }
 
-fun main() {
-    // test PubMedArticle retrieval
-    when (val retEither = PubMedRetrievalService.retrievePubMedArticle("26050619")) {
-        is Either.Right -> {
-            val publication = retEither.value
-            println("Title: ${publication.medlineCitation.article.articleTitle.getvalue()}")
-            val pubmedId = publication.medlineCitation.pmid.getvalue()
-            PubMedRetrievalService.retrieveCitationIds(pubmedId.toInt()).stream()
-                .forEach { cit -> println(cit) }
-            PubMedRetrievalService.generateReferencePlaceholderNodes(pubmedId.toInt()).stream()
-                .forEach { ref -> println("Placeholder $ref") }
-        }
-        is Either.Left -> {
-            LogService.logException( retEither.value)
-        }
-    }
-}

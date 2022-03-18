@@ -71,7 +71,7 @@ class PubMedNodeLoader() {
         when (val retEither = PubMedRetrievalService.retrievePubMedArticle(pubmedNode.idValue)) {
             is Either.Right -> {
                 val pubMedEntry = PubMedEntry.parsePubMedArticle(retEither.value, pubmedNode.primaryLabel)
-                val newPubMedId = PubMedPublicationDao.mergePubMedEntry(pubMedEntry)
+                val newPubMedId = PubMedPublicationDao.loadPubmedEntry(pubMedEntry)
                 LogService.logInfo("PubMed Id $newPubMedId  loaded into Neo4j")
                 loadPubMedReferences(pubmedNode)
             }
@@ -86,7 +86,7 @@ class PubMedNodeLoader() {
     Recursive invocation of PubMedNodeLoader.loadPubMedNode
      */
     private fun loadPubMedReferences(pubmedNode: NodeIdentifier) =
-        PubMedRetrievalService.retrieveReferenceIds(pubmedNode.idValue.toInt())
+        PubMedRetrievalService.retrieveReferenceIds(pubmedNode.idValue)
             .filter { pubmedNode.secondaryLabel.equals(referenceLabel).not() }
             .map { ref -> NodeIdentifier(publicationLabel,pubIdProperty,ref.toString(),
                 secondaryLabel = referenceLabel)}
