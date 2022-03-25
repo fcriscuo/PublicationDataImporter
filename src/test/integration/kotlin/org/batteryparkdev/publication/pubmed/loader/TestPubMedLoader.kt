@@ -3,7 +3,7 @@ package org.batteryparkdev.publication.pubmed.loader
 import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.neo4j.service.Neo4jConnectionService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.placeholder.model.NodeIdentifier
+import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 
 class TestPubMedLoader {

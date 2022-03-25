@@ -3,9 +3,9 @@ package org.batteryparkdev.placeholder.loader
 import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.neo4j.service.Neo4jConnectionService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.placeholder.dao.PlaceholderNodeDao
-import org.batteryparkdev.placeholder.model.NodeIdentifier
-import org.batteryparkdev.placeholder.model.PlaceholderNode
+import org.batteryparkdev.nodeidentifier.dao.NodeIdentifierDao
+import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
 /*
@@ -56,11 +56,11 @@ class PubMedPlaceholderNodeLoader(
     private fun createNewPublicationNode() {
         val parentIdentifier = NodeIdentifier(parentLabel, parentIdProperty, parentId)
         val childIdentifier = NodeIdentifier(publicationLabel, pubIdProperty, pubId, pubmedLabel)
-        val publicationNode = PlaceholderNode(
+        val publicationNode = RelationshipDefinition(
             parentIdentifier, childIdentifier,
-            publicationRelationship, emptyPropertyName
+            publicationRelationship
         )
-        PlaceholderNodeDao.persistPlaceholderNode(publicationNode)
+        NodeIdentifierDao.defineRelationship(publicationNode)
         loadPubMedReferences()
     }
 
@@ -71,10 +71,10 @@ class PubMedPlaceholderNodeLoader(
     private fun loadPubMedReferences() {
         println("##### loadPubMedReferences invoked for $pubId")
         PubMedRetrievalService.generateReferencePlaceholderNodes(pubId.toInt())
-            .forEach { ref ->
+            .forEach { refDef ->
                 run {
-                    println("Reference id:  ${ref.childNode.idValue}  label = ${ref.relationshipType}")
-                    PlaceholderNodeDao.persistPlaceholderNode(ref)
+                    println("Reference id:  ${refDef.childNode.idValue}  label = ${refDef.relationshipType}")
+                    NodeIdentifierDao.defineRelationship(refDef)
                 }
             }
     }
