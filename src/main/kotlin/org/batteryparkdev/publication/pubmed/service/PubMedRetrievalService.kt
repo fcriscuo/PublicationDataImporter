@@ -4,8 +4,8 @@ import ai.wisecube.pubmed.PubmedArticle
 import ai.wisecube.pubmed.PubmedParser
 import arrow.core.Either
 import org.batteryparkdev.logging.service.LogService
-import org.batteryparkdev.placeholder.model.NodeIdentifier
-import org.batteryparkdev.placeholder.model.PlaceholderNode
+import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
@@ -83,8 +83,8 @@ object PubMedRetrievalService {
     the articles referenced by the specified PubMed article
     These PlaceholderNode objects are labeled "Reference"
      */
-    fun generateReferencePlaceholderNodes(pubmedId: Int): Set<PlaceholderNode> {
-        val placeholderSet = mutableSetOf<PlaceholderNode>()
+    fun generateReferencePlaceholderNodes(pubmedId: Int): Set<RelationshipDefinition> {
+        val relationshipDefSet = mutableSetOf<RelationshipDefinition>()
         retrieveReferenceIds(pubmedId.toString()).forEach { ref ->
             run {
                 val parentNode = NodeIdentifier("Publication", "pub_id", pubmedId.toString(),
@@ -93,11 +93,10 @@ object PubMedRetrievalService {
                     "Publication", "pub_id", ref.toString(),
                     "Reference"
                 )
-                placeholderSet.add(PlaceholderNode(parentNode, childNode, "HAS_REFERENCE",
-                    "title"))
+                relationshipDefSet.add(RelationshipDefinition(parentNode, childNode, "HAS_REFERENCE"))
             }
         }
-        return placeholderSet.toSet()
+        return relationshipDefSet.toSet()
     }
 
     /*

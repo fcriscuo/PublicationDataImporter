@@ -2,12 +2,12 @@ package org.batteryparkdev.publication.pubmed.dao
 
 import org.batteryparkdev.neo4j.service.Neo4jConnectionService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.placeholder.model.NodeIdentifier
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 import org.neo4j.driver.Record
 import arrow.core.Either
 import org.batteryparkdev.logging.service.LogService
+import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
 import org.batteryparkdev.publication.pubmed.loader.PubMedNodeLoader
 
 object PubMedPublicationDao {
