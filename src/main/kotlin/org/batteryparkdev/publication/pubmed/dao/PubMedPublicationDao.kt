@@ -115,17 +115,3 @@ Private function to create a Publication/PubMed node
 
 }
 
-fun main() {
-    val pubId = "26050619"
-    when (val retEither = PubMedRetrievalService.retrievePubMedArticle("26050619")) {
-        is Either.Right -> {
-            val publication = retEither.value
-            println("Title: ${publication.medlineCitation.article.articleTitle.getvalue()}")
-           val entry = PubMedEntry.parsePubMedArticle(publication)
-            PubMedPublicationDao.loadPubmedEntry(entry)
-        }
-        is Either.Left -> {
-            LogService.logException( retEither.value)
-        }
-    }
-}

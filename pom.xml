@@ -19,6 +19,7 @@
         <apache.commons.io.version>2.11.0</apache.commons.io.version>
         <apache.log4j.version>1.2.17</apache.log4j.version>
         <apache.csv.version>1.8</apache.csv.version>
+        <apache.commons.config.version>2.7</apache.commons.config.version>
         <guava.version>31.0.1-jre</guava.version>
         <scala_version>2.12.13</scala_version>
         <scalatest.version>3.2.9</scalatest.version>
@@ -76,6 +77,17 @@
             <version>1.0-SNAPSHOT</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/Neo4jService-1.0-SNAPSHOT.jar</systemPath>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-configuration2 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-configuration2</artifactId>
+            <version>${apache.commons.config.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-kotlin</artifactId>
+            <version>6.2.2</version>
         </dependency>
         <dependency>
             <groupId>io.github.microutils</groupId>

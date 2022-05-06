@@ -39,6 +39,6 @@ fun main(){
     val test = TestPubMedLoader()
     test.restoreGraph()
     test.loadPubMedNode()
-    test.tearDown()
+   // test.tearDown()
 
 }
