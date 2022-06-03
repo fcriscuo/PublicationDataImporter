@@ -20,7 +20,7 @@ object PubMedPublicationDao {
             "  RETURN pub.pub_id"
 
     private const val emptyPublicationNodeQuery =
-        "MATCH (pub) WHERE (pub:PubMed OR pub:Reference) AND pub.title =\"\" " +
+        "MATCH (pub) WHERE (pub:Publication) AND NOT EXISTS(pub.title) " +
                 " return pub.pub_id"
 
     /*

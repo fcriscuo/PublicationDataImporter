@@ -14,6 +14,7 @@ class TestPubMedLoader {
     fun restoreGraph() {
         if(Neo4jUtils.nodeExistsPredicate(pubmedNode)) {
             Neo4jUtils.deleteNodeById(pubmedNode)
+            Neo4jUtils.deleteNodeById(parentNode)
         }
         //  create a dummy Parent node for testing
         val cypher = "MERGE (p:${parentNode.primaryLabel}{${parentNode.idProperty}: " +
