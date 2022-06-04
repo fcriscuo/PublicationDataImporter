@@ -69,11 +69,10 @@ class PubMedPlaceholderNodeLoader(
     referenced in the current PubMed article
      */
     private fun loadPubMedReferences() {
-        println("##### loadPubMedReferences invoked for $pubId")
         PubMedRetrievalService.generateReferencePlaceholderNodes(pubId.toInt())
             .forEach { refDef ->
                 run {
-                    println("Reference id:  ${refDef.childNode.idValue}  label = ${refDef.relationshipType}")
+                   // println("Reference id:  ${refDef.childNode.idValue}  label = ${refDef.relationshipType}")
                     NodeIdentifierDao.defineRelationship(refDef)
                 }
             }

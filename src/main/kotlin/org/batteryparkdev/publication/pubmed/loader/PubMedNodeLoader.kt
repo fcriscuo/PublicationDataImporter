@@ -3,7 +3,9 @@ package org.batteryparkdev.publication.pubmed.loader
 import arrow.core.Either
 import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
+import org.batteryparkdev.nodeidentifier.dao.NodeIdentifierDao
 import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
@@ -54,7 +56,7 @@ class PubMedNodeLoader() {
             false -> publicationRelationship
         }
         LogService.logInfo("Creating ${parentNode.primaryLabel} - $relationship -> ${pubmedNode.secondaryLabel}")
-        Neo4jUtils.createParentChildRelationship(parentNode,pubmedNode,relationship)
+       NodeIdentifierDao.defineRelationship(RelationshipDefinition( parentNode,pubmedNode,relationship))
     }
 
    /*
