@@ -35,7 +35,7 @@ class PubMedNodeLoader() {
         LogService.logInfo("Loading Publication ${pubmedNode.primaryLabel} second Label: ${pubmedNode.secondaryLabel} PubId: ${pubmedNode.idValue}  " +
                 " \n Parent: ${parentNode.primaryLabel}  second label: ${parentNode.secondaryLabel}  id= ${parentNode.idValue}")
 
-        when (PubMedPublicationDao.publicationNodeExistsPredicate(pubmedNode.idValue)) {
+        when (PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue)) {
             false -> createPublicationNode(pubmedNode)
             true -> when (novelPubMedLabel(pubmedNode)){
                 true -> loadPubMedReferences(pubmedNode)
@@ -65,7 +65,7 @@ class PubMedNodeLoader() {
    If so, its references need to be loaded
     */
    private fun novelPubMedLabel(pubmedNode: NodeIdentifier):Boolean =
-        PubMedPublicationDao.publicationNodeExistsPredicate(pubmedNode.idValue).not()
+        PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue).not()
             .and(pubmedNode.secondaryLabel == pubmedLabel)
 
     private fun createPublicationNode(pubmedNode: NodeIdentifier){

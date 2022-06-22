@@ -3,12 +3,8 @@ package org.batteryparkdev.publication.pubmed.dao
 import org.batteryparkdev.neo4j.service.Neo4jConnectionService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
-import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 import org.neo4j.driver.Record
-import arrow.core.Either
-import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
-import org.batteryparkdev.publication.pubmed.loader.PubMedNodeLoader
 
 object PubMedPublicationDao {
     private const val mergePubMedArticleTemplate = "MERGE (pub:Publication { pub_id: PUBID}) " +
@@ -56,9 +52,10 @@ object PubMedPublicationDao {
         }
         return pubId.plus(":").plus(sectionId)
     }
-/*
-Private function to create a Publication/PubMed node
- */
+
+    /*
+    Private function to create a Publication/PubMed node
+     */
     private fun mergePubmedEntryNode(pubMedEntry: PubMedEntry): String {
         val merge = mergePubMedArticleTemplate.replace("PUBID", pubMedEntry.pubmedId.toString())
             .replace("PMCID", pubMedEntry.pmcId)
@@ -72,6 +69,7 @@ Private function to create a Publication/PubMed node
             .replace("CITED_BY", pubMedEntry.citedByCount.toString())
         return Neo4jConnectionService.executeCypherCommand(merge)
     }
+
     /*
     Private function to create a PublicationSection node and a relationship to the
     Publication node
@@ -90,14 +88,21 @@ Private function to create a Publication/PubMed node
             .replace("TYPE", "\"Abstract\"")
         Neo4jConnectionService.executeCypherCommand(relate)
         return secId
-
     }
 
-    fun publicationNodeExistsPredicate(pubId: String): Boolean =
+    fun pubmedNodeExistsPredicate(pubId: String): Boolean =
         Neo4jUtils.nodeExistsPredicate(
             NodeIdentifier(
                 "Publication", "pub_id",
-                Neo4jUtils.formatPropertyValue(pubId)
+                Neo4jUtils.formatPropertyValue(pubId), "PubMed"
+            )
+        )
+
+    fun referenceNodeExistsPredicate(pubId: String): Boolean =
+        Neo4jUtils.nodeExistsPredicate(
+            NodeIdentifier(
+                "Publication", "pub_id",
+                Neo4jUtils.formatPropertyValue(pubId), "Reference"
             )
         )
 
@@ -112,6 +117,12 @@ Private function to create a Publication/PubMed node
     */
     private fun resolvePubMedIdentifier(record: Record): String =
         record.asMap()["pub.pub_id"].toString()
+
+    fun gatAllPubmedIds(): Sequence<String> =
+        Neo4jConnectionService.executeCypherQuery(
+            "MATCH (pub:PubMed) RETURN pub.pub_id ")
+            .map { rec -> resolvePubMedIdentifier(rec) }
+            .toList().asSequence()
 
 }
 
