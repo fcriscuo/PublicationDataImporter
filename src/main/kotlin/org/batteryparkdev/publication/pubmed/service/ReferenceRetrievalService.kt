@@ -12,7 +12,6 @@ import org.batteryparkdev.neo4j.service.Neo4jUtils
 import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
-import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
 /*
 Represents a uservice that will retrieve the PubMed references for a specified 
