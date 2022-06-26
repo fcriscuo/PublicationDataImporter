@@ -25,7 +25,7 @@ class TestPubMedLoader {
     fun loadPubMedNode(){
         PubMedNodeLoader().loadPubMedNode(parentNode,pubmedNode)
         LogService.logInfo("Pub id 26050619 exists: " +
-                "${PubMedPublicationDao.publicationNodeExistsPredicate("26050619")}" +
+                "${PubMedPublicationDao.pubmedNodeExistsPredicate("26050619")}" +
                 " (should be true)")
     }
 

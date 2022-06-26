@@ -15,9 +15,13 @@ object PubMedPublicationDao {
             " pub.cited_by_count = CITED_BY " +
             "  RETURN pub.pub_id"
 
-    private const val emptyPublicationNodeQuery =
+    private const val allPublicationPlaceholderNodesQuery =
         "MATCH (pub) WHERE (pub:Publication) AND NOT EXISTS(pub.title) " +
                 " return pub.pub_id"
+
+    private const val limitedPublicationPlaceholderNodesQuery =
+        "MATCH (pub) WHERE (pub:Publication) AND NOT EXISTS(pub.title) " +
+                " return pub.pub_id LIMIT NNNN"
 
     /*
     Template to create a new Section node containing the abstract
@@ -107,7 +111,17 @@ object PubMedPublicationDao {
         )
 
     fun resolvePlaceholderPubMedNodes(): Sequence<String> =
-        Neo4jConnectionService.executeCypherQuery(emptyPublicationNodeQuery)
+        Neo4jConnectionService.executeCypherQuery(allPublicationPlaceholderNodesQuery)
+            .map { rec -> resolvePubMedIdentifier(rec) }
+            .toList().asSequence()
+
+    /*
+    Public function to return a batch of Publication placeholder nodes
+     */
+    fun resolvePlaceholderPubMedNodeBatch(batchSize: Int = 100): Sequence<String> =
+        Neo4jConnectionService.executeCypherQuery(
+            limitedPublicationPlaceholderNodesQuery.replace("NNNN",batchSize.toString())
+        )
             .map { rec -> resolvePubMedIdentifier(rec) }
             .toList().asSequence()
 

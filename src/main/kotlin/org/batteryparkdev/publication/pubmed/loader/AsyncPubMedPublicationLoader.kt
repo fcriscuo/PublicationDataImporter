@@ -115,7 +115,6 @@ object AsyncPubMedPublicationLoader {
     }
 
     private fun processPlaceholderNodes() = runBlocking {
-
         var nodeCount = 0
         var cycleCount = 0
         LogService.logInfo("Completing placeholder PubMedArticle nodes")

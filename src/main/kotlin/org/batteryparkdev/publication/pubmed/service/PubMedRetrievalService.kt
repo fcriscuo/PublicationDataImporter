@@ -25,8 +25,10 @@ object PubMedRetrievalService {
 
     private fun generateEutilsURLByType(type: String, pubmedId: String):String {
        val template = when(type.lowercase()) {
+           /*"pubmed" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml" +
+                   "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"*/
            "pubmed" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml" +
-                   "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
+                   "&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
            "citation" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_citedin" +
                    "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
            "reference" ->"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_refs" +
@@ -50,6 +52,27 @@ object PubMedRetrievalService {
             val parser = PubmedParser()
             val articleSet = parser.parse(text, ai.wisecube.pubmed.PubmedArticleSet::class.java)
             Either.Right(articleSet.pubmedArticleOrPubmedBookArticle[0] as PubmedArticle)
+        } catch (e: Exception) {
+            Either.Left(e)
+        }
+    }
+    /*
+    NCBI PubMed batch fetch request
+    Input - Set of PubMed Ids
+    Output - Either<Exception, List<PubmedArticle>
+     */
+    fun retrievePubMedArticleBatch(pubmedIdSet: Set<String>): Either<Exception,List<PubmedArticle>> {
+        val pubmedId = pubmedIdSet.joinToString(separator = ",")
+        val url = generateEutilsURLByType("pubmed", pubmedId)
+        val articleList = mutableListOf<PubmedArticle>()
+        return try {
+            val text = URL(url).readText(Charset.defaultCharset())
+            val parser = PubmedParser()
+            val articleSet = parser.parse(text, ai.wisecube.pubmed.PubmedArticleSet::class.java)
+            for (i in 0 until pubmedIdSet.size){
+                articleList.add(articleSet.pubmedArticleOrPubmedBookArticle[i] as PubmedArticle)
+            }
+            Either.Right(articleList)
         } catch (e: Exception) {
             Either.Left(e)
         }
