@@ -3,12 +3,8 @@ package org.batteryparkdev.publication.pubmed.dao
 import org.batteryparkdev.neo4j.service.Neo4jConnectionService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
-import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 import org.neo4j.driver.Record
-import arrow.core.Either
-import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
-import org.batteryparkdev.publication.pubmed.loader.PubMedNodeLoader
 
 object PubMedPublicationDao {
     private const val mergePubMedArticleTemplate = "MERGE (pub:Publication { pub_id: PUBID}) " +
@@ -19,9 +15,13 @@ object PubMedPublicationDao {
             " pub.cited_by_count = CITED_BY " +
             "  RETURN pub.pub_id"
 
-    private const val emptyPublicationNodeQuery =
-        "MATCH (pub) WHERE (pub:PubMed OR pub:Reference) AND pub.title =\"\" " +
+    private const val allPublicationPlaceholderNodesQuery =
+        "MATCH (pub) WHERE (pub:Publication) AND NOT EXISTS(pub.title) " +
                 " return pub.pub_id"
+
+    private const val limitedPublicationPlaceholderNodesQuery =
+        "MATCH (pub) WHERE (pub:Publication) AND NOT EXISTS(pub.title) " +
+                " return pub.pub_id LIMIT NNNN"
 
     /*
     Template to create a new Section node containing the abstract
@@ -56,9 +56,10 @@ object PubMedPublicationDao {
         }
         return pubId.plus(":").plus(sectionId)
     }
-/*
-Private function to create a Publication/PubMed node
- */
+
+    /*
+    Private function to create a Publication/PubMed node
+     */
     private fun mergePubmedEntryNode(pubMedEntry: PubMedEntry): String {
         val merge = mergePubMedArticleTemplate.replace("PUBID", pubMedEntry.pubmedId.toString())
             .replace("PMCID", pubMedEntry.pmcId)
@@ -72,6 +73,7 @@ Private function to create a Publication/PubMed node
             .replace("CITED_BY", pubMedEntry.citedByCount.toString())
         return Neo4jConnectionService.executeCypherCommand(merge)
     }
+
     /*
     Private function to create a PublicationSection node and a relationship to the
     Publication node
@@ -90,19 +92,36 @@ Private function to create a Publication/PubMed node
             .replace("TYPE", "\"Abstract\"")
         Neo4jConnectionService.executeCypherCommand(relate)
         return secId
-
     }
 
-    fun publicationNodeExistsPredicate(pubId: String): Boolean =
+    fun pubmedNodeExistsPredicate(pubId: String): Boolean =
         Neo4jUtils.nodeExistsPredicate(
             NodeIdentifier(
                 "Publication", "pub_id",
-                Neo4jUtils.formatPropertyValue(pubId)
+                Neo4jUtils.formatPropertyValue(pubId), "PubMed"
+            )
+        )
+
+    fun referenceNodeExistsPredicate(pubId: String): Boolean =
+        Neo4jUtils.nodeExistsPredicate(
+            NodeIdentifier(
+                "Publication", "pub_id",
+                Neo4jUtils.formatPropertyValue(pubId), "Reference"
             )
         )
 
     fun resolvePlaceholderPubMedNodes(): Sequence<String> =
-        Neo4jConnectionService.executeCypherQuery(emptyPublicationNodeQuery)
+        Neo4jConnectionService.executeCypherQuery(allPublicationPlaceholderNodesQuery)
+            .map { rec -> resolvePubMedIdentifier(rec) }
+            .toList().asSequence()
+
+    /*
+    Public function to return a batch of Publication placeholder nodes
+     */
+    fun resolvePlaceholderPubMedNodeBatch(batchSize: Int = 100): Sequence<String> =
+        Neo4jConnectionService.executeCypherQuery(
+            limitedPublicationPlaceholderNodesQuery.replace("NNNN",batchSize.toString())
+        )
             .map { rec -> resolvePubMedIdentifier(rec) }
             .toList().asSequence()
 
@@ -113,19 +132,11 @@ Private function to create a Publication/PubMed node
     private fun resolvePubMedIdentifier(record: Record): String =
         record.asMap()["pub.pub_id"].toString()
 
+    fun gatAllPubmedIds(): Sequence<String> =
+        Neo4jConnectionService.executeCypherQuery(
+            "MATCH (pub:PubMed) RETURN pub.pub_id ")
+            .map { rec -> resolvePubMedIdentifier(rec) }
+            .toList().asSequence()
+
 }
 
-fun main() {
-    val pubId = "26050619"
-    when (val retEither = PubMedRetrievalService.retrievePubMedArticle("26050619")) {
-        is Either.Right -> {
-            val publication = retEither.value
-            println("Title: ${publication.medlineCitation.article.articleTitle.getvalue()}")
-           val entry = PubMedEntry.parsePubMedArticle(publication)
-            PubMedPublicationDao.loadPubmedEntry(entry)
-        }
-        is Either.Left -> {
-            LogService.logException( retEither.value)
-        }
-    }
-}

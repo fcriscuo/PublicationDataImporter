@@ -4,8 +4,6 @@ import arrow.core.Either
 import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
-class TestPubMedRetrievalService {
-}
 fun main() {
     // test PubMedArticle retrieval
     when (val retEither = PubMedRetrievalService.retrievePubMedArticle("26050619")) {

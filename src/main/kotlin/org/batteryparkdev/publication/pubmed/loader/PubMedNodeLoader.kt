@@ -3,10 +3,13 @@ package org.batteryparkdev.publication.pubmed.loader
 import arrow.core.Either
 import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.neo4j.service.Neo4jUtils
+import org.batteryparkdev.nodeidentifier.dao.NodeIdentifierDao
 import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
+import org.batteryparkdev.publication.pubmed.service.ReferenceRetrievalService
 
 /*
 Responsible for loading data for a specific PubMed Id into the Neo4j database
@@ -33,7 +36,7 @@ class PubMedNodeLoader() {
         LogService.logInfo("Loading Publication ${pubmedNode.primaryLabel} second Label: ${pubmedNode.secondaryLabel} PubId: ${pubmedNode.idValue}  " +
                 " \n Parent: ${parentNode.primaryLabel}  second label: ${parentNode.secondaryLabel}  id= ${parentNode.idValue}")
 
-        when (PubMedPublicationDao.publicationNodeExistsPredicate(pubmedNode.idValue)) {
+        when (PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue)) {
             false -> createPublicationNode(pubmedNode)
             true -> when (novelPubMedLabel(pubmedNode)){
                 true -> loadPubMedReferences(pubmedNode)
@@ -54,7 +57,7 @@ class PubMedNodeLoader() {
             false -> publicationRelationship
         }
         LogService.logInfo("Creating ${parentNode.primaryLabel} - $relationship -> ${pubmedNode.secondaryLabel}")
-        Neo4jUtils.createParentChildRelationship(parentNode,pubmedNode,relationship)
+       NodeIdentifierDao.defineRelationship(RelationshipDefinition( parentNode,pubmedNode,relationship))
     }
 
    /*
@@ -63,7 +66,7 @@ class PubMedNodeLoader() {
    If so, its references need to be loaded
     */
    private fun novelPubMedLabel(pubmedNode: NodeIdentifier):Boolean =
-        PubMedPublicationDao.publicationNodeExistsPredicate(pubmedNode.idValue).not()
+        PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue).not()
             .and(pubmedNode.secondaryLabel == pubmedLabel)
 
     private fun createPublicationNode(pubmedNode: NodeIdentifier){
@@ -81,16 +84,9 @@ class PubMedNodeLoader() {
         }
     }
     /*
-    Private function to create Publication/Reference nodes for a
+    Private function to load Publication/Reference nodes for a
     Publication/PubMed node
-    Recursive invocation of PubMedNodeLoader.loadPubMedNode
      */
     private fun loadPubMedReferences(pubmedNode: NodeIdentifier) =
-        PubMedRetrievalService.retrieveReferenceIds(pubmedNode.idValue)
-            .filter { pubmedNode.secondaryLabel.equals(referenceLabel).not() }
-            .map { ref -> NodeIdentifier(publicationLabel,pubIdProperty,ref.toString(),
-                secondaryLabel = referenceLabel)}
-            .forEach {
-            refNode -> loadPubMedNode(pubmedNode,refNode)
-        }
+       ReferenceRetrievalService(pubmedNode.idValue.toInt()).processReferences()
 }

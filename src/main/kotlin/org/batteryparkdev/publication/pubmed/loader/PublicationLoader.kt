@@ -12,18 +12,23 @@ import org.batteryparkdev.logging.service.LogService
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
-import java.util.*
+import org.batteryparkdev.publication.pubmed.service.ReferenceRetrievalService
 import java.util.concurrent.TimeUnit
-import kotlin.concurrent.scheduleAtFixedRate
 
 /*
-Object responsible for scanning the Neo4j for placeholder (i.e. empty) PubMed & Reference
-nodes and retrieving their complete entries from NCBI. The rationale for this design is to
-avoid impeding the loading of other data types into Neo4j by the time-consuming process of
-loading PubMed data. This is because NCBI strictly enforces a maximum retrial request rate
-of 3 requests/second (10 requests/second if a registered NCBI user).
+Kotlin application responsible for scanning a Neo4j database for Publication placeholder nodes.
+a placeholder node is defined as a node with a label(s) and identifier property as well as relationships
+to other nodes already defined. In the case of Publication/PubMed node that means a Publication node
+with a PubMed label, a PubMed Id, and a relationship to a parent node defined. This application will query
+the Neo4j database for these nodes and retrieve their entries from NCBI to complete the nodes properties.
+It will also create complete Publication/Reference nodes for a Publication/PubMed node's references.
+Because NCBI enforces a 3 requests/second (10 requests/second for registered users), this process take a
+considerable amount of time. Please note that the application can be restarted if the NCBI resource become
+unavailable.
+
  */
-object AsyncPubMedPublicationLoader {
+
+class PublicationLoader() {
     /*
     Private function to query the Neo4j database for empty nodes
     and producing a channel of PubMed Ids (String)
@@ -45,8 +50,8 @@ object AsyncPubMedPublicationLoader {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun CoroutineScope.retrievePubMedData(identifiers: ReceiveChannel<String>) =
         produce<PubMedEntry> {
-            for(identifier in identifiers){
-                // logger.atInfo().log("Retrieving data for ${identifier.pubmedId}")
+            for (identifier in identifiers) {
+
                 val entry = generatePubMedEntries(identifier)
                 if (entry != null) {
                     send(entry)
@@ -78,45 +83,56 @@ object AsyncPubMedPublicationLoader {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun CoroutineScope.loadPubMedEntries(entries: ReceiveChannel<PubMedEntry>) =
         produce<PubMedEntry> {
-            for (entry in entries){
+            for (entry in entries) {
                 PubMedPublicationDao.loadPubmedEntry(entry)
+                println("Publication node for PubMed Id ${entry.pubmedId} loaded")
                 send(entry)
                 delay(20)
             }
         }
+
     /*
-    Public function to periodically query the Neo4j database for placeholder
-    PubMed nodes and retrieve the remaining properties from PubMed at NCBI
+    Load Publication/Reference nodes for reference articles
      */
-    fun scheduledPlaceHolderNodeScan(interval: Long = 60_000): TimerTask {
-        val fixedRateTimer = Timer().scheduleAtFixedRate(delay = 5_000, period = interval) {
-            processPlaceholderNodes()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun CoroutineScope.loadPublicationReferenceNodes(entries: ReceiveChannel<PubMedEntry>) =
+        produce<PubMedEntry> {
+            for (entry in entries) {
+                ReferenceRetrievalService(entry.pubmedId).processReferences()
+                send(entry)
+                delay(20L)
+            }
         }
-        return fixedRateTimer
-    }
 
-    private fun processPlaceholderNodes() = runBlocking{
-
+    fun processPlaceholderNodes() = runBlocking {
         var nodeCount = 0
         var cycleCount = 0
         LogService.logInfo("Completing placeholder PubMedArticle nodes")
         val stopwatch = Stopwatch.createStarted()
         repeat(2) {
             cycleCount += 1
-            val  ids =
-                loadPubMedEntries(
-                    retrievePubMedData(
-                        getPublicationPlaceholders()
+            val ids =
+                loadPublicationReferenceNodes(
+                    loadPubMedEntries(
+                        retrievePubMedData(
+                            getPublicationPlaceholders()
+                        )
                     )
                 )
-            for (id in ids){
+            for (id in ids) {
                 nodeCount += 1
             }
             delay(100)
         }
-        LogService.logInfo("Publication data loaded " +
-                " $nodeCount nodes in " +
-                " ${stopwatch.elapsed(TimeUnit.SECONDS)} seconds")
+        LogService.logInfo(
+            "Publication data loaded " +
+                    " $nodeCount nodes in " +
+                    " ${stopwatch.elapsed(TimeUnit.SECONDS)} seconds"
+        )
     }
+}
+
+fun main(){
+    PublicationLoader().processPlaceholderNodes()
 }
 

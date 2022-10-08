@@ -9,7 +9,7 @@ import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
 /*
-Responsible for persisting a PubMed Id as a placeholder node in the
+Responsible for persisting a Publication Id as a placeholder node in the
 Neo4j database. If the id represents an origin publication (i.e. not
 a reference), placeholder nodes for the publications references will
 also be created. This class also accommodates existing database nodes
@@ -22,8 +22,6 @@ class PubMedPlaceholderNodeLoader(
 ) {
     private val pubmedLabel = "PubMed"
     private val publicationLabel = "Publication"
-    private val emptyPropertyName = "title"
-    private val referenceLabel = "Reference"
     private val pubIdProperty = "pub_id"
     private val publicationRelationship = "HAS_PUBLICATION"
     private val referenceRelationship = "HAS_REFERENCE"
@@ -42,7 +40,7 @@ class PubMedPlaceholderNodeLoader(
         // otherwise it means that the current node was formerly labeled as a Reference node
         // but is now also being labelled a PubMed node and its References need to be
         // retrieved
-        val isExistingPubMedNode = Neo4jUtils.nodeExistsPredicate(NodeIdentifier(pubmedLabel,pubIdProperty, pubId ))
+        val isExistingPubMedNode = Neo4jUtils.nodeExistsPredicate(NodeIdentifier(publicationLabel,pubIdProperty, pubId ))
         createNewPublicationNode()
         // load references
         if (isExistingPubMedNode.not()) {
@@ -69,31 +67,12 @@ class PubMedPlaceholderNodeLoader(
     referenced in the current PubMed article
      */
     private fun loadPubMedReferences() {
-        println("##### loadPubMedReferences invoked for $pubId")
         PubMedRetrievalService.generateReferencePlaceholderNodes(pubId.toInt())
             .forEach { refDef ->
                 run {
-                    println("Reference id:  ${refDef.childNode.idValue}  label = ${refDef.relationshipType}")
+                   // println("Reference id:  ${refDef.childNode.idValue}  label = ${refDef.relationshipType}")
                     NodeIdentifierDao.defineRelationship(refDef)
                 }
             }
     }
-}
-/*
-Integration test
-TODO: remove in production version
- */
-fun main() {
-    // delete all Publication nodes
-    LogService.logInfo("WARNING: Deleting all existing Publication nodes in 10 seconds")
-    Thread.sleep(10_000)
-    Neo4jConnectionService.executeCypherCommand("MATCH (p:Publication) DETACH DELETE (p)")
-    PubMedPlaceholderNodeLoader("21876726","GO:1902494", "GoTerm",
-    "go_id").registerPubMedPublication()
-    PubMedPlaceholderNodeLoader("21876726","GO:1902494", "GoTerm",
-        "go_id").registerPubMedPublication()
-    PubMedPlaceholderNodeLoader("12021310","GO:0004553", "GoTerm",
-        "go_id").registerPubMedPublication()
-    PubMedPlaceholderNodeLoader("9585234","GO:0004520", "GoTerm",
-        "go_id").registerPubMedPublication()
 }
