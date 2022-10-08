@@ -9,6 +9,7 @@ import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
+import org.batteryparkdev.publication.pubmed.service.ReferenceRetrievalService
 
 /*
 Responsible for loading data for a specific PubMed Id into the Neo4j database
@@ -83,16 +84,9 @@ class PubMedNodeLoader() {
         }
     }
     /*
-    Private function to create Publication/Reference nodes for a
+    Private function to load Publication/Reference nodes for a
     Publication/PubMed node
-    Recursive invocation of PubMedNodeLoader.loadPubMedNode
      */
     private fun loadPubMedReferences(pubmedNode: NodeIdentifier) =
-        PubMedRetrievalService.retrieveReferenceIds(pubmedNode.idValue)
-            .filter { pubmedNode.secondaryLabel.equals(referenceLabel).not() }
-            .map { ref -> NodeIdentifier(publicationLabel,pubIdProperty,ref.toString(),
-                secondaryLabel = referenceLabel)}
-            .forEach {
-            refNode -> loadPubMedNode(pubmedNode,refNode)
-        }
+       ReferenceRetrievalService(pubmedNode.idValue.toInt()).processReferences()
 }

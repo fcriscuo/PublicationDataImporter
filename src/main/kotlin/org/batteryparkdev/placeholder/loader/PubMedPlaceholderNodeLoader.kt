@@ -22,8 +22,6 @@ class PubMedPlaceholderNodeLoader(
 ) {
     private val pubmedLabel = "PubMed"
     private val publicationLabel = "Publication"
-    private val emptyPropertyName = "title"
-    private val referenceLabel = "Reference"
     private val pubIdProperty = "pub_id"
     private val publicationRelationship = "HAS_PUBLICATION"
     private val referenceRelationship = "HAS_REFERENCE"

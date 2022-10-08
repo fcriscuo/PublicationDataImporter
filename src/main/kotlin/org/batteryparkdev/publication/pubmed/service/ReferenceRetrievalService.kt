@@ -39,7 +39,7 @@ class ReferenceRetrievalService(val pubId: Int) {
             pubCount += 1
             println("Reference Id: ${entry.pubmedId}   label: ${entry.label}  PubMed Id: ${entry.parentPubMedId}")
         }
-        println("Publication count = $pubCount")
+        println("Reference count = $pubCount")
 
     }
     /*
