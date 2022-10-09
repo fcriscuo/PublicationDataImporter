@@ -1,7 +1,8 @@
 package org.batteryparkdev.placeholder.loader
 
-import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
+
 
 class TestPubMedPlaceholderNodeLoader {
     val pubIdList = listOf("21876726", "12021310","9585234")

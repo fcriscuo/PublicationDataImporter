@@ -1,10 +1,13 @@
 package org.batteryparkdev.publication.pubmed.dao
 
-import org.batteryparkdev.neo4j.service.Neo4jConnectionService
-import org.batteryparkdev.neo4j.service.Neo4jUtils
+
+import org.batteryparkdev.genomicgraphcore.common.formatNeo4jPropertyValue
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jConnectionService
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.neo4j.driver.Record
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+
 
 object PubMedPublicationDao {
     private const val mergePubMedArticleTemplate = "MERGE (pub:Publication { pub_id: PUBID}) " +
@@ -34,7 +37,7 @@ object PubMedPublicationDao {
     (eg. 26050619-1)
      */
     private fun getPublicationSectionId(pubId: String): String {
-        val cypher = "MATCH (p:Publication{p: ${Neo4jUtils.formatPropertyValue(pubId)} }) -- " +
+        val cypher = "MATCH (p:Publication{p: ${pubId} }) -- " +
                 "(PublicationSection) RETURN COUNT(PublicationSection.section_id) +1"
         return pubId.plus("-").plus(Neo4jConnectionService.executeCypherCommand(cypher))
     }
@@ -83,11 +86,10 @@ object PubMedPublicationDao {
         val pubId = pubMedEntry.pubmedId.toString()
         val merge = mergeSectionNodeTemplate.replace(
             "SECID",
-            Neo4jUtils.formatPropertyValue(getPublicationSectionId(pubId))
-        )
-            .replace("ABSTRACT", Neo4jUtils.formatPropertyValue(abstract))
+           getPublicationSectionId(pubId))
+            .replace("ABSTRACT", abstract.formatNeo4jPropertyValue())
         val secId = Neo4jConnectionService.executeCypherCommand(merge)
-        val relate = sectionRelationshipTemplate.replace("PUBID", Neo4jUtils.formatPropertyValue(pubId))
+        val relate = sectionRelationshipTemplate.replace("PUBID", pubId)
             .replace("SECTIONID", secId)
             .replace("TYPE", "\"Abstract\"")
         Neo4jConnectionService.executeCypherCommand(relate)
@@ -98,7 +100,7 @@ object PubMedPublicationDao {
         Neo4jUtils.nodeExistsPredicate(
             NodeIdentifier(
                 "Publication", "pub_id",
-                Neo4jUtils.formatPropertyValue(pubId), "PubMed"
+                pubId, "PubMed"
             )
         )
 
@@ -106,7 +108,7 @@ object PubMedPublicationDao {
         Neo4jUtils.nodeExistsPredicate(
             NodeIdentifier(
                 "Publication", "pub_id",
-                Neo4jUtils.formatPropertyValue(pubId), "Reference"
+                pubId, "Reference"
             )
         )
 

@@ -1,9 +1,10 @@
 package org.batteryparkdev.publication.pubmed.loader
 
-import org.batteryparkdev.logging.service.LogService
-import org.batteryparkdev.neo4j.service.Neo4jConnectionService
-import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.common.formatNeo4jPropertyValue
+import org.batteryparkdev.genomicgraphcore.common.service.LogService
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jConnectionService
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 
 class TestPubMedLoader {
@@ -18,13 +19,13 @@ class TestPubMedLoader {
         }
         //  create a dummy Parent node for testing
         val cypher = "MERGE (p:${parentNode.primaryLabel}{${parentNode.idProperty}: " +
-                "${Neo4jUtils.formatPropertyValue(parentNode.idValue)} }) return p"
+                "${parentNode.idValue.formatNeo4jPropertyValue() }) return p"
         Neo4jConnectionService.executeCypherCommand(cypher)
     }
 
     fun loadPubMedNode(){
         PubMedNodeLoader().loadPubMedNode(parentNode,pubmedNode)
-        LogService.logInfo("Pub id 26050619 exists: " +
+        LogService.info("Pub id 26050619 exists: " +
                 "${PubMedPublicationDao.pubmedNodeExistsPredicate("26050619")}" +
                 " (should be true)")
     }
@@ -32,7 +33,7 @@ class TestPubMedLoader {
     fun tearDown() {
         Neo4jUtils.deleteNodeById(pubmedNode)
         Neo4jUtils.deleteNodeById(pubmedNode)
-        LogService.logInfo("Neo4j test nodes deleted")
+        LogService.info("Neo4j test nodes deleted")
     }
 }
 

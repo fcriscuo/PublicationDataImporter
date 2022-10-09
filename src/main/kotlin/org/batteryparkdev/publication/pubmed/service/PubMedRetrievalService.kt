@@ -3,9 +3,10 @@ package org.batteryparkdev.publication.pubmed.service
 import ai.wisecube.pubmed.PubmedArticle
 import ai.wisecube.pubmed.PubmedParser
 import arrow.core.Either
-import org.batteryparkdev.logging.service.LogService
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
-import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
+import org.batteryparkdev.genomicgraphcore.common.service.LogService
+import org.batteryparkdev.genomicgraphcore.common.service.log
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.RelationshipDefinition
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
@@ -95,8 +96,8 @@ object PubMedRetrievalService {
                 }
             }
         } catch (e: Exception) {
-            LogService.logError("++++  EXCEPTION getting citation set for $pubmedId")
-            LogService.logException(e)
+            LogService.error("++++  EXCEPTION getting citation set for $pubmedId")
+            e.log()
         }
         return citationSet.toSet()
     }
@@ -143,10 +144,10 @@ object PubMedRetrievalService {
                 }
             }
         } catch (e: Exception) {
-            LogService.logError("++++  EXCEPTION getting reference set for $pubmedId")
-            LogService.logException(e)
+            LogService.error("++++  EXCEPTION getting reference set for $pubmedId")
+            e.log()
         }
-        LogService.logFine("+++Reference set size = ${referenceSet.size}")
+        LogService.fine("+++Reference set size = ${referenceSet.size}")
         return referenceSet.toSet()
     }
 }

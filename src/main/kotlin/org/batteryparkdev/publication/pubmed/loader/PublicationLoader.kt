@@ -8,7 +8,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.batteryparkdev.logging.service.LogService
+import org.batteryparkdev.genomicgraphcore.common.service.LogService
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
@@ -71,7 +71,7 @@ class PublicationLoader() {
                 PubMedEntry.parsePubMedArticle(pubmedArticle)
             }
             is Either.Left -> {
-                LogService.logException(retEither.value)
+                LogService.exception(retEither.value)
                 null
             }
         }
@@ -107,7 +107,7 @@ class PublicationLoader() {
     fun processPlaceholderNodes() = runBlocking {
         var nodeCount = 0
         var cycleCount = 0
-        LogService.logInfo("Completing placeholder PubMedArticle nodes")
+        LogService.info("Completing placeholder PubMedArticle nodes")
         val stopwatch = Stopwatch.createStarted()
         repeat(2) {
             cycleCount += 1
@@ -124,7 +124,7 @@ class PublicationLoader() {
             }
             delay(100)
         }
-        LogService.logInfo(
+        LogService.info(
             "Publication data loaded " +
                     " $nodeCount nodes in " +
                     " ${stopwatch.elapsed(TimeUnit.SECONDS)} seconds"

@@ -1,7 +1,8 @@
 package org.batteryparkdev.service
 
 import arrow.core.Either
-import org.batteryparkdev.logging.service.LogService
+import org.batteryparkdev.genomicgraphcore.common.service.log
+
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
 fun main() {
@@ -17,7 +18,7 @@ fun main() {
                 .forEach { ref -> println("Placeholder $ref") }
         }
         is Either.Left -> {
-            LogService.logException( retEither.value)
+             retEither.value.log()
         }
     }
     // NCBI stress test

@@ -1,11 +1,13 @@
 package org.batteryparkdev.publication.pubmed.loader
 
 import arrow.core.Either
-import org.batteryparkdev.logging.service.LogService
-import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.nodeidentifier.dao.NodeIdentifierDao
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
-import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
+import org.batteryparkdev.genomicgraphcore.common.service.LogService
+import org.batteryparkdev.genomicgraphcore.common.service.log
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifierDao
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.RelationshipDefinition
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
+
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
@@ -33,7 +35,7 @@ class PubMedNodeLoader() {
      */
     fun loadPubMedNode(parentNode: NodeIdentifier, pubmedNode: NodeIdentifier) {
 
-        LogService.logInfo("Loading Publication ${pubmedNode.primaryLabel} second Label: ${pubmedNode.secondaryLabel} PubId: ${pubmedNode.idValue}  " +
+        LogService.info("Loading Publication ${pubmedNode.primaryLabel} second Label: ${pubmedNode.secondaryLabel} PubId: ${pubmedNode.idValue}  " +
                 " \n Parent: ${parentNode.primaryLabel}  second label: ${parentNode.secondaryLabel}  id= ${parentNode.idValue}")
 
         when (PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue)) {
@@ -56,7 +58,7 @@ class PubMedNodeLoader() {
             true -> referenceRelationship
             false -> publicationRelationship
         }
-        LogService.logInfo("Creating ${parentNode.primaryLabel} - $relationship -> ${pubmedNode.secondaryLabel}")
+        LogService.info("Creating ${parentNode.primaryLabel} - $relationship -> ${pubmedNode.secondaryLabel}")
        NodeIdentifierDao.defineRelationship(RelationshipDefinition( parentNode,pubmedNode,relationship))
     }
 
@@ -70,16 +72,16 @@ class PubMedNodeLoader() {
             .and(pubmedNode.secondaryLabel == pubmedLabel)
 
     private fun createPublicationNode(pubmedNode: NodeIdentifier){
-        LogService.logInfo("Creating new node for ${pubmedNode.primaryLabel}l:${pubmedNode.idValue}")
+        LogService.info("Creating new node for ${pubmedNode.primaryLabel}l:${pubmedNode.idValue}")
         when (val retEither = PubMedRetrievalService.retrievePubMedArticle(pubmedNode.idValue)) {
             is Either.Right -> {
                 val pubMedEntry = PubMedEntry.parsePubMedArticle(retEither.value, pubmedNode.primaryLabel)
                 val newPubMedId = PubMedPublicationDao.loadPubmedEntry(pubMedEntry)
-                LogService.logInfo("PubMed Id $newPubMedId  loaded into Neo4j")
+                LogService.info("PubMed Id $newPubMedId  loaded into Neo4j")
                 loadPubMedReferences(pubmedNode)
             }
             is Either.Left -> {
-                LogService.logException( retEither.value)
+                retEither.value.log()
             }
         }
     }

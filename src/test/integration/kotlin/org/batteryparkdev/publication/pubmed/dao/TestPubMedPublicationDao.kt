@@ -1,7 +1,8 @@
 package org.batteryparkdev.publication.pubmed.dao
 
 import arrow.core.Either
-import org.batteryparkdev.logging.service.LogService
+import org.batteryparkdev.genomicgraphcore.common.service.log
+
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
@@ -17,7 +18,7 @@ fun main() {
             PubMedPublicationDao.loadPubmedEntry(entry)
         }
         is Either.Left -> {
-            LogService.logException( retEither.value)
+            retEither.value.log()
         }
     }
 }

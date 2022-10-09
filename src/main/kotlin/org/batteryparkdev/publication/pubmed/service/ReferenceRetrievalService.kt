@@ -7,9 +7,9 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.batteryparkdev.neo4j.service.Neo4jConnectionService
-import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jConnectionService
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 
