@@ -7,7 +7,6 @@ import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
 import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifierDao
 import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.RelationshipDefinition
 import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
-
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
@@ -34,19 +33,32 @@ class PubMedNodeLoader() {
     whether the supplied PubMed Id is novel
      */
     fun loadPubMedNode(parentNode: NodeIdentifier, pubmedNode: NodeIdentifier) {
-
         LogService.info("Loading Publication ${pubmedNode.primaryLabel} second Label: ${pubmedNode.secondaryLabel} PubId: ${pubmedNode.idValue}  " +
                 " \n Parent: ${parentNode.primaryLabel}  second label: ${parentNode.secondaryLabel}  id= ${parentNode.idValue}")
 
         when (PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue)) {
             false -> createPublicationNode(pubmedNode)
             true -> when (novelPubMedLabel(pubmedNode)){
-                true -> loadPubMedReferences(pubmedNode)
+                true -> resolvePubMedEntryReferences(pubmedNode)
                 false -> Neo4jUtils.addLabelToNode(pubmedNode)
             }
         }
         Neo4jUtils.addLabelToNode(pubmedNode)
         createParentRelationship(parentNode, pubmedNode)
+    }
+
+    private fun resolvePubMedEntryReferences(pubmedNode: NodeIdentifier){
+        when (val retEither = PubMedRetrievalService.retrievePubMedArticle(pubmedNode.idValue)) {
+            is Either.Right -> {
+                val pubMedEntry = PubMedEntry.parsePubMedArticle(retEither.value, pubmedNode.primaryLabel)
+                val newPubMedId = PubMedPublicationDao.loadPubmedEntry(pubMedEntry)
+                ReferenceRetrievalService(pubMedEntry).processReferences()
+                LogService.info("PubMed Id $newPubMedId  loaded into Neo4j")
+            }
+            is Either.Left -> {
+                retEither.value.log()
+            }
+        }
     }
 
     /*
@@ -71,24 +83,20 @@ class PubMedNodeLoader() {
         PubMedPublicationDao.pubmedNodeExistsPredicate(pubmedNode.idValue).not()
             .and(pubmedNode.secondaryLabel == pubmedLabel)
 
-    private fun createPublicationNode(pubmedNode: NodeIdentifier){
+    private fun createPublicationNode(pubmedNode: NodeIdentifier):PubMedEntry?{
         LogService.info("Creating new node for ${pubmedNode.primaryLabel}l:${pubmedNode.idValue}")
-        when (val retEither = PubMedRetrievalService.retrievePubMedArticle(pubmedNode.idValue)) {
+       return  when (val retEither = PubMedRetrievalService.retrievePubMedArticle(pubmedNode.idValue)) {
             is Either.Right -> {
                 val pubMedEntry = PubMedEntry.parsePubMedArticle(retEither.value, pubmedNode.primaryLabel)
                 val newPubMedId = PubMedPublicationDao.loadPubmedEntry(pubMedEntry)
                 LogService.info("PubMed Id $newPubMedId  loaded into Neo4j")
-                loadPubMedReferences(pubmedNode)
+                ReferenceRetrievalService(pubMedEntry).processReferences()
+                pubMedEntry
             }
             is Either.Left -> {
                 retEither.value.log()
+                null
             }
         }
     }
-    /*
-    Private function to load Publication/Reference nodes for a
-    Publication/PubMed node
-     */
-    private fun loadPubMedReferences(pubmedNode: NodeIdentifier) =
-       ReferenceRetrievalService(pubmedNode.idValue.toInt()).processReferences()
 }

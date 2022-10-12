@@ -9,6 +9,7 @@ import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.batteryparkdev.genomicgraphcore.common.service.LogService
+import org.batteryparkdev.genomicgraphcore.common.service.Neo4jPropertiesService
 import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
@@ -22,7 +23,7 @@ to other nodes already defined. In the case of Publication/PubMed node that mean
 with a PubMed label, a PubMed Id, and a relationship to a parent node defined. This application will query
 the Neo4j database for these nodes and retrieve their entries from NCBI to complete the nodes properties.
 It will also create complete Publication/Reference nodes for a Publication/PubMed node's references.
-Because NCBI enforces a 3 requests/second (10 requests/second for registered users), this process take a
+Because NCBI enforces a 3 requests/second (10 requests/second for registered users), this process takes a
 considerable amount of time. Please note that the application can be restarted if the NCBI resource become
 unavailable.
 
@@ -51,7 +52,6 @@ class PublicationLoader() {
     private fun CoroutineScope.retrievePubMedData(identifiers: ReceiveChannel<String>) =
         produce<PubMedEntry> {
             for (identifier in identifiers) {
-
                 val entry = generatePubMedEntries(identifier)
                 if (entry != null) {
                     send(entry)
@@ -98,7 +98,7 @@ class PublicationLoader() {
     private fun CoroutineScope.loadPublicationReferenceNodes(entries: ReceiveChannel<PubMedEntry>) =
         produce<PubMedEntry> {
             for (entry in entries) {
-                ReferenceRetrievalService(entry.pubmedId).processReferences()
+                ReferenceRetrievalService(entry).processReferences()
                 send(entry)
                 delay(20L)
             }
@@ -133,6 +133,9 @@ class PublicationLoader() {
 }
 
 fun main(){
+    println("Processing placeholder Publication nodes in the ${Neo4jPropertiesService.neo4jDatabase} database")
+    println("There will be a ten (10) second delay for you to cancel execution if this is not the target database.")
+    Thread.sleep(10_000)
     PublicationLoader().processPlaceholderNodes()
 }
 

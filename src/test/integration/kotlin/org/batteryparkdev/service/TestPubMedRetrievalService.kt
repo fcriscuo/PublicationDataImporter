@@ -2,7 +2,6 @@ package org.batteryparkdev.service
 
 import arrow.core.Either
 import org.batteryparkdev.genomicgraphcore.common.service.log
-
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
 fun main() {

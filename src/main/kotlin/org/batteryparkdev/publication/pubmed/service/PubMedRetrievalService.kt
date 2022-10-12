@@ -26,8 +26,6 @@ object PubMedRetrievalService {
 
     private fun generateEutilsURLByType(type: String, pubmedId: String):String {
        val template = when(type.lowercase()) {
-           /*"pubmed" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml" +
-                   "&id=PUBMEDID&&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"*/
            "pubmed" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&amp;id=PUBMEDID&amp;retmode=xml" +
                    "&tool=my_tool&email=NCBIEMAIL&api_key=APIKEY"
            "citation" -> "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&linkname=pubmed_pubmed_citedin" +

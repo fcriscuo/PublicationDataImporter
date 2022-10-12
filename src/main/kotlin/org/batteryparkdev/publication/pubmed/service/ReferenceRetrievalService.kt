@@ -14,14 +14,14 @@ import org.batteryparkdev.publication.pubmed.dao.PubMedPublicationDao
 import org.batteryparkdev.publication.pubmed.model.PubMedEntry
 
 /*
-Represents a uservice that will retrieve the PubMed references for a specified 
+Represents a service that will retrieve the PubMed references for a specified
 PubMed Id. If the PubMed Id for a reference is novel
 a new Neo4j Publication node will be loaded. In all cases a
 Publication/PubMed -[HAS_REFERENCE] -> Publication/Reference relationship will be established
 If an existing Publication/PubMed node is also a Reference, a Reference label will be added
 to that node (i.e. Publication/PubMed/Reference)
  */
-class ReferenceRetrievalService(val pubId: Int) {
+class ReferenceRetrievalService(val origin: PubMedEntry) {
 
     fun processReferences() = runBlocking {
         var pubCount = 0
@@ -48,9 +48,9 @@ class ReferenceRetrievalService(val pubId: Int) {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun CoroutineScope.resolveReferenceIds() =
         produce<Pair<Int, List<Int>>> {
-            val idSet = PubMedRetrievalService.retrieveReferenceIds(pubId.toString())
-            if (idSet.isNotEmpty()) {
-                send(Pair(pubId, idSet.toList()))
+            //val idSet = PubMedRetrievalService.retrieveReferenceIds(pubId.toString())
+            if (origin.referenceSet.isNotEmpty()) {
+                send(Pair(origin.pubmedId, origin.referenceSet.toList()))
             }
             delay(300L)
         }
