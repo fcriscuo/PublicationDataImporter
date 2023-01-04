@@ -1,11 +1,10 @@
 package org.batteryparkdev.placeholder.loader
 
-import org.batteryparkdev.logging.service.LogService
-import org.batteryparkdev.neo4j.service.Neo4jConnectionService
-import org.batteryparkdev.neo4j.service.Neo4jUtils
-import org.batteryparkdev.nodeidentifier.dao.NodeIdentifierDao
-import org.batteryparkdev.nodeidentifier.model.NodeIdentifier
-import org.batteryparkdev.nodeidentifier.model.RelationshipDefinition
+
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifier
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.NodeIdentifierDao
+import org.batteryparkdev.genomicgraphcore.neo4j.nodeidentifier.RelationshipDefinition
+import org.batteryparkdev.genomicgraphcore.neo4j.service.Neo4jUtils
 import org.batteryparkdev.publication.pubmed.service.PubMedRetrievalService
 
 /*
