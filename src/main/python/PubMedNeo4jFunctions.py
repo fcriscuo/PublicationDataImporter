@@ -2,6 +2,7 @@ from neo4j import GraphDatabase
 import requests
 import xml.etree.ElementTree as ET
 import os
+import PubMedReferenceImporter as pri   
 
 # Define the database URI, user, and password
 uri = "neo4j://tosca.local:7687"
@@ -33,6 +34,7 @@ def get_nodes(query):
 
 # Define a function that takes a node label, an identifier property, an identifier value, and a dictionary of new properties as arguments and updates the node in the database
 def update_node(label, id_prop, id_value, props):
+    #print(f"PubMedNeo4jFunctions: update_node {label} {id_prop} {id_value}")
     # confirm that the node exists
     if not node_exists(label, id_prop, id_value):    
         print(f"Node for {label} {id_prop} {id_value} does not exist.")
@@ -44,9 +46,22 @@ def update_node(label, id_prop, id_value, props):
         # Run the query with the parameters
         session.run(query, id_value=id_value, props=props)
         session.close()
+        references = props["references"]
+        #print(f"procsessing references {references}")
+        if references is not None:
+            create_reference_nodes(id_value, references)
+            #print(f"processing references for {id_value} {references}")
+            pri.persist_reference_data(id_value, references)    
+
+#Define a function that will create placholder nodes for the references
+def create_reference_nodes(pub_id, reference_ids):
+    # Loop through each reference id
+    for reference_id in reference_ids:
+        # Create the reference node
+        create_reference_node(pub_id, reference_id)
 
 # Define a function tha will create a Reference node and a relationship to an existing PubMed node
-def create_reference_node( reference_id):
+def create_reference_node( pub_id,reference_id):
     # Initialize an empty dictionary to store the properties
     props = {}
     
@@ -61,7 +76,12 @@ def create_reference_node( reference_id):
 
     # Create the Reference node
     if not node_exists("Publication", "pub_id", reference_id):
+        print(f"Creating Reference node for {reference_id}")
         create_node("Publication", props)
+    add_label(reference_id, "Reference")
+    # Create the relationship
+    create_relationship("Publication", "pub_id", pub_id, "Publication", "pub_id", reference_id, "CITES")
+    update_needs_references_property(pub_id)
 
 # Define a function to determine if a node exists in the database
 # default id_prop is pub_id
@@ -90,6 +110,7 @@ def needs_references(pmid):
             return record is not None and record["exists"] is True
         else:
             return False
+        
 def create_relationship(label1, id_prop1, id_value1, label2, id_prop2, id_value2, rel_type):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -142,7 +163,6 @@ def delete_pubmed_node(pmid):
         session.run(query, id_value=pmid)
         print(f"Deleted PubMed ID: {pmid}")
 
-
 def update_needs_references_property(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -152,44 +172,12 @@ def update_needs_references_property(pmid):
         session.run(query, id_value=pmid)
         session.close()
     
-for node in nodes:
-    print(f"Processing PubMed ID: {node}...")
-    info = get_pubmed_info(node)
-    if (info is not None):
-        label = "Publication"
-        id_prop = "pub_id"
-        id_value = int(info[9]) if info[9] is not None else 0
-        props = {"needs_properties": False, "url": info[10], "title": info[0], "authors": info[1], "abstract": info[2],
-                     "journal": info[4], "volume": info[5], "issue": info[6], "year": info[7], "references": info[8]}
-        update_node(label, id_prop, id_value, props)
-        # validate that the node was updated
-        if node_exists("Publication", "pub_id", node):
-            print(f"Updated node for PubMed ID: {node}")
-        else:
-            print(f"Failed to update node for PubMed ID: {node}")
-        # create placeholder nodes for references
-        if  (info[8] is not None) & needs_references(node) :
-            for reference in info[8].split(", "):
-                if reference.isdigit() and int(reference) > 0:
-                    refId = int(reference)
-                    if not node_exists("Publication", "pub_id", refId):
-                        create_reference_node(refId)
-                    print(f"Created reference node for PubMed ID: {refId}")
-                    # add a Reference label to reference node
-                    add_label(refId, "Reference")
-                    # Create the relationship
-                    create_relationship("Publication", "pub_id", id_value, "Publication", "pub_id", refId, "CITES")
-        # update the needs_references property
-        update_needs_references_property(info[9])
-    else:
-     print(f"No information found forPubMed ID: {node}")
-
      # Define a function that will determine if there are any nodes in the database that have the needs_properties property set to TRUE
 def needs_properties():
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value, and sets the new properties
-        query = f"MATCH (n:Publication) WHERE n.needs_properties = TRUE RETURN n.pub_id as pub_id"
+        query = "MATCH (n:Publication) WHERE n.needs_properties = TRUE RETURN n.pub_id as pub_id"
         # Run the query with the parameters
         result = session.run(query)
         # Return True if the result contains a record
