@@ -25,3 +25,4 @@ hs_err_pid*
 data/
 target/
 logs/
+_pychache_/
