@@ -200,7 +200,9 @@ def update_needs_references_property(pmid):
         session.run(query, id_value=pmid)
         session.close()
 
-    # Define a function that will set the needs_proerties property anf the needs_references property to FALSE for a Publication node
+    # Define a function that will set the needs_proerties property and the needs_references property to FALSE for a Publication node
+# If a placeholderPublication node represents a book rather than a journal article, the needs_properties property will be set to FALSE
+# This prevents the node from being selected for processing by the PubMedXMLFunctions.py script
 
 
 def turn_off_properties_flags(pmid):
