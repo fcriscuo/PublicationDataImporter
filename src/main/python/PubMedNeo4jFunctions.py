@@ -1,18 +1,27 @@
-from neo4j import GraphDatabase
-import requests
-import xml.etree.ElementTree as ET
 import os
-import PubMedReferenceImporter as pri   
+
+from neo4j import GraphDatabase
+
+import PubMedReferenceImporter as pri
+
+"""
+A collection of Python functions to interact with a Neo4j database
+n.b. Code development assisted by Github Copilot
+Author: Fred Criscuolo
+"""
 
 # Define the database URI, user, and password
-uri = "neo4j://tosca.local:7687"
-user = os.environ.get('NEO4J_USER',"neo4j")
-password = os.environ.get('NEO4J_PASSWORD',"neo4j")
+# User and password are set as environment variables with standard Neo4j defaults
+uri = "neo4j://localhost:7687"
+user = os.environ.get('NEO4J_USER', "neo4j")
+password = os.environ.get('NEO4J_PASSWORD', "neo4j")
 
 # Create a driver object to connect to the database
 driver = GraphDatabase.driver(uri, auth=(user, password))
 
 # Define a function that takes a query as an argument and returns a list of nodes
+
+
 def get_nodes(query):
     # Initialize an empty list to store the nodes
     nodes = []
@@ -33,10 +42,12 @@ def get_nodes(query):
     return nodes
 
 # Define a function that takes a node label, an identifier property, an identifier value, and a dictionary of new properties as arguments and updates the node in the database
+
+
 def update_node(label, id_prop, id_value, props):
-    #print(f"PubMedNeo4jFunctions: update_node {label} {id_prop} {id_value}")
+    # print(f"PubMedNeo4jFunctions: update_node {label} {id_prop} {id_value}")
     # confirm that the node exists
-    if not node_exists(label, id_prop, id_value):    
+    if not node_exists(label, id_prop, id_value):
         print(f"Node for {label} {id_prop} {id_value} does not exist.")
         return
     # Use a context manager to create a session with the driver
@@ -47,13 +58,15 @@ def update_node(label, id_prop, id_value, props):
         session.run(query, id_value=id_value, props=props)
         session.close()
         references = props["references"]
-        #print(f"procsessing references {references}")
+        # print(f"procsessing references {references}")
         if references is not None:
             create_reference_nodes(id_value, references)
-            #print(f"processing references for {id_value} {references}")
-            pri.persist_reference_data(id_value, references)    
+            # print(f"processing references for {id_value} {references}")
+            pri.persist_reference_data(id_value, references)
 
-#Define a function that will create placholder nodes for the references
+# Define a function that will create placholder nodes for the references
+
+
 def create_reference_nodes(pub_id, reference_ids):
     # Loop through each reference id
     for reference_id in reference_ids:
@@ -61,10 +74,12 @@ def create_reference_nodes(pub_id, reference_ids):
         create_reference_node(pub_id, reference_id)
 
 # Define a function tha will create a Reference node and a relationship to an existing PubMed node
-def create_reference_node( pub_id,reference_id):
+
+
+def create_reference_node(pub_id, reference_id):
     # Initialize an empty dictionary to store the properties
     props = {}
-    
+
     # Set the reference ID property
     props["pub_id"] = reference_id
 
@@ -80,14 +95,17 @@ def create_reference_node( pub_id,reference_id):
         create_node("Publication", props)
     add_label(reference_id, "Reference")
     # Create the relationship
-    create_relationship("Publication", "pub_id", pub_id, "Publication", "pub_id", reference_id, "CITES")
+    create_relationship("Publication", "pub_id", pub_id,
+                        "Publication", "pub_id", reference_id, "CITES")
     update_needs_references_property(pub_id)
 
 # Define a function to determine if a node exists in the database
 # default id_prop is pub_id
-#default labe is Publication
-#default id_value is 0
-def node_exists(label="Publication", id_prop="pub_id", id_value = 0):  
+# default labe is Publication
+# default id_value is 0
+
+
+def node_exists(label="Publication", id_prop="pub_id", id_value=0):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value
@@ -96,21 +114,24 @@ def node_exists(label="Publication", id_prop="pub_id", id_value = 0):
         result = session.run(query, id_value=id_value)
         # Return True if the result contains a record
         return result.single() is not None
-    
+
 # Define a function to determine if a Publication node's needs_references is FALSE
+
+
 def needs_references(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value
         if node_exists("Publication", "pub_id", pmid):
-            query = f"MATCH (n:Publication) WHERE n.pub_id = {pmid} RETURN n.needs_references as exists"    
+            query = f"MATCH (n:Publication) WHERE n.pub_id = {pmid} RETURN n.needs_references as exists"
             # Run the query with the parameters
             result = session.run(query, id_value=pmid)
             record = result.single()
             return record is not None and record["exists"] is True
         else:
             return False
-        
+
+
 def create_relationship(label1, id_prop1, id_value1, label2, id_prop2, id_value2, rel_type):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -118,6 +139,7 @@ def create_relationship(label1, id_prop1, id_value1, label2, id_prop2, id_value2
         query = f"MATCH (n1:{label1} {{{id_prop1}: {id_value1}}}), (n2:{label2} {{{id_prop2}: {id_value2}}}) MERGE (n1)-[:{rel_type}]->(n2)"
         # Run the query with the parameters
         session.run(query, id_value1=id_value1, id_value2=id_value2)
+
 
 def create_node(label, props):
     # Use a context manager to create a session with the driver
@@ -127,6 +149,7 @@ def create_node(label, props):
         # Run the query with the parameter
         session.run(query, props=props)
 
+
 def node_has_label(node_id, label):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -134,12 +157,14 @@ def node_has_label(node_id, label):
         query = f"MATCH (n:Publication) WHERE n.pub_id = {int(node_id)} AND n:{label} RETURN TRUE AS exists"
         # Run the query with the parameter
         result = session.run(query, node_id=node_id)
-        # Return True if the result contains a record  
+        # Return True if the result contains a record
         record = result.single()
         exists = bool(record["exists"]) if record is not None else False
         return exists
 
 # Define a function that takes a node id and a label as arguments and adds the label to the node in the database
+
+
 def add_label(node_id, label):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -153,6 +178,8 @@ def add_label(node_id, label):
         session.run(query, node_id=node_id)
 
 # Define a function to detach and delete a Publication node based on its PubMed ID
+
+
 def delete_pubmed_node(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -163,6 +190,7 @@ def delete_pubmed_node(pmid):
         session.run(query, id_value=pmid)
         print(f"Deleted PubMed ID: {pmid}")
 
+
 def update_needs_references_property(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -171,8 +199,25 @@ def update_needs_references_property(pmid):
         # Run the query with the parameters
         session.run(query, id_value=pmid)
         session.close()
-    
+
+    # Define a function that will set the needs_proerties property and the needs_references property to FALSE for a Publication node
+# If a placeholderPublication node represents a book rather than a journal article, the needs_properties property will be set to FALSE
+# This prevents the node from being selected for processing by the PubMedXMLFunctions.py script
+
+
+def turn_off_properties_flags(pmid):
+    # Use a context manager to create a session with the driver
+    with driver.session() as session:
+        # Construct a query that matches the node by label and identifier property and value, and sets the new properties
+        query = f"MATCH (n:Publication) WHERE n.pub_id = {pmid} SET n.needs_properties = FALSE, n.needs_references = FALSE"
+        # Run the query with the parameters
+        session.run(query, id_value=pmid)
+        session.close()
+        print(f"Turned off properties flags for PubMed ID: {pmid}")
+
      # Define a function that will determine if there are any nodes in the database that have the needs_properties property set to TRUE
+
+
 def needs_properties():
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -182,4 +227,3 @@ def needs_properties():
         result = session.run(query)
         # Return True if the result contains a record
         return result.single() is not None
-
