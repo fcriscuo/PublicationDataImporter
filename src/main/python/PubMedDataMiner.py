@@ -1,11 +1,23 @@
+import langchain
+import openai
+#%pip install langchain openai wikipedia tiktoken neo4j
 # Import the neo4j module
 from neo4j import GraphDatabase
 import requests
 import xml.etree.ElementTree as ET
 import os
+import Llama2_embedding_service as llama2
+
+from langchain.vectorstores.neo4j_vector import Neo4jVector
+from langchain.document_loaders import PubMedLoader
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.docstore.document import Document
+import os
 
 # Define the database URI, user, and password
-uri = "neo4j://tosca.local:7687"
+#uri = "neo4j://tosca.local:7687"
+uri = "neo4j://localhost:7687"
 user = os.environ.get('NEO4J_USER',"neo4j")
 password = os.environ.get('NEO4J_PASSWORD',"neo4j")
 
@@ -14,21 +26,9 @@ driver = GraphDatabase.driver(uri, auth=(user, password))
 
 # Define a function that takes a query as an argument and returns a list of nodes
 def get_nodes(query):
-    # Initialize an empty list to store the nodes
-    nodes = []
     # Use a context manager to create a session with the driver
     with driver.session() as session:
-        # Run the query and get the result
-        result = session.run(query)
-
-        # Loop through each record in the result
-        for record in result:
-            # Get the first value in the record, which is a node object
-            node = record.values()[0]
-
-            # Append the node to the list
-            nodes.append(node)
-
+        nodes = [record.values()[0] for record in session.run(query)]
     # Return the list of nodes
     return nodes
 
@@ -90,6 +90,10 @@ def get_pubmed_info(pmid):
         # Get the abstract element text
         abstract = article.find("Abstract/AbstractText").text
 
+        #Generate the embeddings for the abstract if the abstract is not blank
+        if abstract != "":
+            embeddings = llama2.generate_embedding(abstract)
+
         # Get the list of article id elements
         article_ids = root.findall("PubmedArticle/PubmedData/ArticleIdList/ArticleId")
 
@@ -115,9 +119,13 @@ def get_pubmed_info(pmid):
             # Store the id value in the dictionary with the id type as key
             article_ids_dict[id_type] = id_value
 
-        # Return a tuple of title, author names, abstract, and article ids dictionary
+        # Return a tuple of title, author names, abstract, and article ids dictionary if the abstract is not blank
+        if abstract != "":
+            return (
+                title, author_names, abstract, article_ids_dict, journal_title, journal_volume, journal_issue, journal_year,
+                reference_ids, pmid, url, embeddings)
         return (
-            title, author_names, abstract, article_ids_dict, journal_title, journal_volume, journal_issue, journal_year,
+            title, author_names,article_ids_dict, journal_title, journal_volume, journal_issue, journal_year,
             reference_ids, pmid, url)
 
     else:
@@ -138,7 +146,7 @@ def update_node(label, id_prop, id_value, props):
         session.run(query, id_value=id_value, props=props)
         session.close()
 
-# Define a function tha will create a Reference node and a relationship to an existing PubMed node
+# Define a function tha will create a PubMedArticle (Reference) node and a relationship to an existing PubMed node
 def create_reference_node( reference_id):
     # Initialize an empty dictionary to store the properties
     props = {}
@@ -152,15 +160,15 @@ def create_reference_node( reference_id):
     # Set the needs_references property
     props["needs_references"] = False
 
-    # Create the Reference node
-    if not node_exists("Publication", "pub_id", reference_id):
-        create_node("Publication", props)
+    # Create the PubMedArticle Reference node
+    if not node_exists("PubMedArticle", "pub_id", reference_id):
+        create_node("PubMedArticle", props)
 
 # Define a function to determine if a node exists in the database
 # default id_prop is pub_id
-#default labe is Publication
+#default labe is PubMedArticle
 #default id_value is 0
-def node_exists(label="Publication", id_prop="pub_id", id_value = 0):  
+def node_exists(label="PubMedArticle", id_prop="pub_id", id_value = 0):  
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value
@@ -170,13 +178,13 @@ def node_exists(label="Publication", id_prop="pub_id", id_value = 0):
         # Return True if the result contains a record
         return result.single() is not None
     
-# Define a function to determine if a Publication node's needs_references is FALSE
+# Define a function to determine if a PubMedArticle node's needs_references is FALSE
 def needs_references(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value
-        if node_exists("Publication", "pub_id", pmid):
-            query = f"MATCH (n:Publication) WHERE n.pub_id = {pmid} RETURN n.needs_references as exists"    
+        if node_exists("PubMedArticle", "pub_id", pmid):
+            query = f"MATCH (n:PubMedArticle) WHERE n.pub_id = {pmid} RETURN n.needs_references as exists"    
             # Run the query with the parameters
             result = session.run(query, id_value=pmid)
             record = result.single()
@@ -203,8 +211,8 @@ def create_node(label, props):
 def node_has_label(node_id, label):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
-        # Construct a query that matches the Publication node and node_id and adds the label
-        query = f"MATCH (n:Publication) WHERE n.pub_id = {int(node_id)} AND n:{label} RETURN TRUE AS exists"
+        # Construct a query that matches the PubMedArticle node and node_id and adds the label
+        query = f"MATCH (n:PubMedArticle) WHERE n.pub_id = {int(node_id)} AND n:{label} RETURN TRUE AS exists"
         # Run the query with the parameter
         result = session.run(query, node_id=node_id)
         # Return True if the result contains a record  
@@ -220,17 +228,17 @@ def add_label(node_id, label):
         if node_has_label(node_id, label):
             print(f"Node {node_id} already has label {label}.")
             return
-        # Construct a query that matches the Publication node and node_id and adds the label
-        query = f"MATCH (n:Publication) WHERE n.pub_id = {int(node_id)} SET n:{label}"
+        # Construct a query that matches the PubMedArticle node and node_id and adds the label
+        query = f"MATCH (n:PubMedArticle) WHERE n.pub_id = {int(node_id)} SET n:{label}"
         # Run the query with the parameter
         session.run(query, node_id=node_id)
 
-# Define a function to detach and delete a Publication node based on its PubMed ID
+# Define a function to detach and delete a PubMedArticle node based on its PubMed ID
 def delete_pubmed_node(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that detaches and deletes the node by label and identifier property and value
-        query = f"MATCH (n:Publication) WHERE n.pub_id = {pmid} DETACH DELETE n"
+        query = f"MATCH (n:PubMedArticle) WHERE n.pub_id = {pmid} DETACH DELETE n"
 
         # Run the query with the parameters
         session.run(query, id_value=pmid)
@@ -241,14 +249,13 @@ def update_needs_references_property(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value, and sets the new properties
-        query = f"MATCH (n:Publication) WHERE n.pub_id = {pmid} SET n.needs_references = FALSE"
+        query = f"MATCH (n:PubMedArticle) WHERE n.pub_id = {pmid} SET n.needs_references = FALSE"
         # Run the query with the parameters
         session.run(query, id_value=pmid)
         session.close()
     
 
-# Test the function with an example query that returns all nodes with the label Person
-query1 = "MATCH (p:Publication) WHERE p.needs_properties = TRUE RETURN p.pub_id limit 500"
+query1 = "MATCH (p:PubMedArticle) WHERE p.needs_properties = TRUE RETURN p.pub_id limit 500"
 
 nodes = get_nodes(query1)
 
@@ -256,14 +263,14 @@ for node in nodes:
     print(f"Processing PubMed ID: {node}...")
     info = get_pubmed_info(node)
     if (info is not None):
-        label = "Publication"
+        label = "PubMedArticle"
         id_prop = "pub_id"
         id_value = int(info[9]) if info[9] is not None else 0
         props = {"needs_properties": False, "url": info[10], "title": info[0], "authors": info[1], "abstract": info[2],
                      "journal": info[4], "volume": info[5], "issue": info[6], "year": info[7], "references": info[8]}
         update_node(label, id_prop, id_value, props)
         # validate that the node was updated
-        if node_exists("Publication", "pub_id", node):
+        if node_exists("PubMedArticle", "pub_id", node):
             print(f"Updated node for PubMed ID: {node}")
         else:
             print(f"Failed to update node for PubMed ID: {node}")
@@ -272,13 +279,13 @@ for node in nodes:
             for reference in info[8].split(", "):
                 if reference.isdigit() and int(reference) > 0:
                     refId = int(reference)
-                    if not node_exists("Publication", "pub_id", refId):
+                    if not node_exists("PubMedArticle", "pub_id", refId):
                         create_reference_node(refId)
                     print(f"Created reference node for PubMed ID: {refId}")
                     # add a Reference label to reference node
-                    add_label(refId, "Reference")
+                    #add_label(refId, "Reference")
                     # Create the relationship
-                    create_relationship("Publication", "pub_id", id_value, "Publication", "pub_id", refId, "CITES")
+                    create_relationship("PubMedArticle", "pub_id", id_value, "PubMedArticle", "pub_id", refId, "CITES")
         # update the needs_references property
         update_needs_references_property(info[9])
     else:

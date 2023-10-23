@@ -18,7 +18,7 @@ def process_reference(pubmed_id, reference_id):
     with driver.session() as session:
         # define a cypher query to check if the reference identifier already exists as a Publication node
         check_query = """
-        MATCH (p:Publication)
+        MATCH (p:PubMedArticle)
         WHERE p.pub_id = $reference_id
         RETURN p
         """
@@ -26,7 +26,7 @@ def process_reference(pubmed_id, reference_id):
         result = session.run(check_query, reference_id=reference_id)
         # get the first record from the result object
         record = result.single()
-        # if the record is not None, it means the reference identifier already exists as a Publication node
+        # if the record is not None, it means the reference identifier already exists as a PubMedArticle node
         if record is not None:
             # get the node from the record
             node = record["p"]
@@ -37,7 +37,7 @@ def process_reference(pubmed_id, reference_id):
             else:
                 # add the Reference label to the node
                 add_label_query = """
-                MATCH (p:Publication)
+                MATCH (p:PubMedArticle)
                 WHERE p.pub_id = $reference_id
                 SET p:Reference
                 """
@@ -50,9 +50,9 @@ def process_reference(pubmed_id, reference_id):
                     # print a message that the label was added
                     print(f"Reference label added to node {reference_id}")
         else:
-            # create a new node with the labels Publication and Reference and the properties pub_id, need_properties, and needs_references
+            # create a new node with the labels PubMedArticle label and the properties pub_id, need_properties, and needs_references
             create_node_query = """
-            CREATE (r:Publication:Reference {pub_id: $reference_id, need_properties: true, needs_references: false})
+            CREATE (r:PubMedArticle {pub_id: $reference_id, need_properties: true, needs_references: false})
             """
             session.run(create_node_query, reference_id=reference_id)
             # print a message that the node was created
@@ -60,8 +60,8 @@ def process_reference(pubmed_id, reference_id):
 
         # create a relationship of type CITES between the PubMed node and the Reference node
         create_rel_query = """
-        MATCH (p:Publication {pub_id: $pubmed_id})
-        MATCH (r:Publication {pub_id: $reference_id})
+        MATCH (p:PubMedArticle {pub_id: $pubmed_id})
+        MATCH (r:PubMedArticle {pub_id: $reference_id})
         MERGE (p)-[:CITES]->(r)
         """
         session.run(create_rel_query, pubmed_id=pubmed_id,

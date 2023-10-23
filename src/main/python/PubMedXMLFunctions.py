@@ -106,25 +106,11 @@ def extract_pubmed_data(pubmed_article):
 
 # Define a function to parse the reference ids from the article as a joined String
 def extract_reference_ids(pubmed_article):
-    # Get the list of reference elements
     references = pubmed_article.findall("PubmedData/ReferenceList/Reference")
-
-    # Initialize an empty list to store the reference ids
-    reference_ids = []
-
-    # Loop through each reference element
-    for reference in references:
-        # Get the PMID element text
-        for article_id in reference.findall("ArticleIdList/ArticleId"):
-            if article_id.attrib["IdType"] == "pubmed":
-                reference_ids.append(int(article_id.text))
-
-    # Return the reference ids
+    reference_ids = [int(article_id.text) for reference in references for article_id in reference.findall("ArticleIdList/ArticleId") if article_id.attrib.get("IdType") == "pubmed"]
     return reference_ids
 
 # Define a function that will parse the pmid idtype and doi idType from the articleIds XML element
-
-
 def extract_article_ids(pubmed_article):
     # Get the list of articleId elements
     article_ids = pubmed_article.findall("PubmedData/ArticleIdList/ArticleId")
@@ -137,7 +123,6 @@ def extract_article_ids(pubmed_article):
     for article_id in article_ids:
         # Get the IdType attribute value
         id_type = article_id.attrib["IdType"]
-
         # Check if the IdType is equal to "pmc"
         if id_type == "pmc":
             # Get the text of the articleId element
@@ -153,9 +138,7 @@ def extract_article_ids(pubmed_article):
     # Return the pmid and doi
     return pubmed, pmc_id, doi
 
-# Define a function that will extraxt author names
-
-
+# Define a function that will extract author names
 def extract_author_names(pubmed_article):
     # Get the list of author elements
     authors = pubmed_article.findall(

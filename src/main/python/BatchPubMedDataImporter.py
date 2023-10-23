@@ -11,7 +11,6 @@ Author: Fred Criscuolo
 
 # Define a function that will query the database for n nodes and return the result as String of comma separated integers
 
-
 def get_needs_properties_batch(n):
     """
     Query the database for n nodes that have the needs_properties flag set to true
@@ -20,19 +19,8 @@ def get_needs_properties_batch(n):
     """
     # Define the query
     query = "MATCH (p:Publication) WHERE p.needs_properties = TRUE RETURN p.pub_id limit " + str(n)
-
-    # Get the list of nodes
-    pmids = pmf.get_nodes(query)
-
-    # Initialize an empty list to store the node IDs
-    pubmed_ids = []
-
-    # Loop through each node
-    for pmid in pmids:
-        # Add the pub_id tot the list
-        pubmed_ids.append(int(pmid))
-
-    # Return the list of node IDs as a comma separated string
+    # Return the list of node IDs as a list of integers
+    pubmed_ids = [int(pmid) for pmid in pmf.get_nodes(query)]
     return pubmed_ids
 
 # Define a function that will persist the data to the database
