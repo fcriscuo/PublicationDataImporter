@@ -1,5 +1,6 @@
 import sys
-
+import time
+import threading
 from langchain.embeddings import OllamaEmbeddings
 
 """
@@ -18,9 +19,11 @@ def generate_embedding(text):
     """
     Generate an embedding for the given text
     """
-    print(f"Generating embedding for text: {text}")
-    embedding = embeddings._embed(text)
-    return embedding[0]
+    start_time = time.time()
+    embedding = embeddings.embed_query(text)
+    duration= time.time() - start_time
+    print(f"Generating embedding for {len(text)} characters required {duration:.2f} seconds")
+    return embedding
 
 def main():
     """

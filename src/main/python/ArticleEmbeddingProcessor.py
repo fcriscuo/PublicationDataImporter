@@ -1,6 +1,6 @@
 import PubMedNeo4jFunctions as pmf
 import Llama2_embedding_service as llama2
-import multiprocessing
+from multiprocessing import Pool
 import time
 from langchain.embeddings import OllamaEmbeddings
 
@@ -24,35 +24,39 @@ def get_article_abstract(pubmed_id):
     text = pmf.get_node_property(label, id_prop, id_value, "abstract")
     return text
 
+
+def generate_abstract_embeddings(pubmed_id):
+    if pubmed_id is None:
+        return
+    # get the abstract of the PubMedArticle node
+    abstract = get_article_abstract(pubmed_id)
+    # check if the abstract is not None or empty
+    if abstract != "":
+        embedding = llama2.generate_embedding(abstract)
+        # set the embedding for the PubMedArticle node
+        pmf.set_embeddings_property(pubmed_id, embedding)
+
+
 # define a function that will generate embeddings for a batch of PubMedArticle nodes
 def generate_embeddings_batch(pubmed_ids):
     """
     Generate embeddings for a batch of PubMedArticle nodes
     """
-    ncores = multiprocessing.cpu_count()-1
-    for pubmed_id in pubmed_ids:
-        print(f"Processing PMID {pubmed_id}")
-        # get the abstract of the PubMedArticle node
-        abstract = get_article_abstract(pubmed_id)
-        #check if the abstract is not None or empty
-        if abstract != "":
-             # generate the embedding for the abstract
-            start_time = time.time()
-            embedding = llama2.generate_embedding(abstract)
-            end_time = time.time()
-            # set the embedding for the PubMedArticle node
-            pmf.set_embeddings_property(pubmed_id, embedding)
-            print(f"Embeddings created for PMID {pubmed_id} in {end_time - start_time:.5f} seconds")
+    [pmf.set_embeddings_property(pubmed_id, llama2.generate_embedding(get_article_abstract(pubmed_id))) for pubmed_id in
+     pubmed_ids if get_article_abstract(pubmed_id) != ""]
+
 
 # define a function that will return of pub_ids from PubMedArticle nodes where the embeddings property is null
 def get_pubmed_ids_with_null_embeddings(limit=1000):
     """
     Return a list of pub_ids from PubMedArticle nodes where the embeddings property is null
     """
-    query = ("MATCH (p:PubMedArticle) WHERE p.embeddings IS NULL AND p.abstract IS NOT NULL AND NOT isEmpty(p.abstract) "
-             "RETURN p.pub_id limit ") + str(limit)
-    pubmed_ids = [int(pmid) for pmid in pmf.get_nodes(query)]
+    query = (
+                "MATCH (p:PubMedArticle) WHERE p.embeddings IS NULL AND p.abstract IS NOT NULL AND NOT isEmpty(p.abstract) "
+                "RETURN p.pub_id limit ") + str(limit)
+    pubmed_ids = [pmid for pmid in pmf.get_nodes(query)]
     return pubmed_ids
+
 
 def main():
     """
@@ -63,12 +67,11 @@ def main():
     print("Starting embeddings generation for PubMed articles")
     batch_size = 100
     # Loop until all nodes that have the needs_properties flag set to true have been processed
-    while pmf.needs_embeddings():
+    while pmf.needs_embeddiings_nodes_exist():
         # Get a batch of nodes that have the needs_properties flag set to true
         pubmed_ids = get_pubmed_ids_with_null_embeddings(batch_size)
-        print(f"Processing batch of {batch_size} nodes: {pubmed_ids}")
-        generate_embeddings_batch(pubmed_ids)
-        print("Finished embeddings generation for abstract data")
+        with Pool(processes=4) as pool:
+            pool.map(generate_abstract_embeddings, pubmed_ids)
 
 
 if __name__ == "__main__":

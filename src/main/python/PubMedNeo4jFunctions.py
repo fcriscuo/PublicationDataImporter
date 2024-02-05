@@ -26,7 +26,7 @@ driver = GraphDatabase.driver(uri, auth=(user, password))
 def create_pubmed_article_id_constraint():
     with driver.session() as session:
         session.run(
-            "CREATE CONSTRAINT pubmed_article_id IF NOT EXISTS FOR (article:PubMedArticle) REQUIRE article.pub_id IS UNIQUE")
+            "CREATE CONSTRAINT unique_pubmed_article_id IF NOT EXISTS FOR (article:PubMedArticle) REQUIRE article.pub_id IS UNIQUE")
         session.close()
         print("Created PubMedArticle ID constraint")
         create_vector_index(driver)
@@ -37,10 +37,10 @@ def create_vector_index(driver) -> None:
     index_query = "CALL db.index.vector.createNodeIndex('pubmedarticle', 'PubMedArticle', 'embeddings', $dimension, 'cosine')"
     try:
         driver.query(index_query, {"dimension": dimension})
+        print("Created vector index for PubMedArticle embeddings")
     except:  # Already exists
+        print(f"Vector index already exists for PubMedArticle embeddings")
         pass
-    print("Created vector index for PubMedArticle nodes")
-
 
 # Define a function that takes a query as an argument and returns a list of nodes
 
@@ -120,11 +120,10 @@ def create_reference_node(pub_id, reference_id):
     if not node_exists("PubMedArticle", "pub_id", reference_id):
         print(f"Creating PubMedArticle (reference) node for {reference_id}")
         create_node("PubMedArticle", props)
-    # add_label(reference_id, "Reference")
     # Create the relationship
     create_relationship("PubMedArticle", "pub_id", pub_id,
                         "PubMedArticle", "pub_id", reference_id, "CITES")
-    update_needs_references_property(pub_id)
+    negate_needs_references_property(pub_id)
 
 
 # Define a function to determine if a node exists in the database
@@ -147,7 +146,7 @@ def node_exists(label="PubMedArticle", id_prop="pub_id", id_value=0):
 # Define a function to determine if a PubMedArticle node's needs_references is FALSE
 
 
-def needs_references(pmid):
+def needs_references_nodes_exist(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value
@@ -209,7 +208,7 @@ def add_label(node_id, label):
         print(f"Added label {label} to node {node_id}")
 
 
-# Define a function that will set the embeddings property for a specifiedPubMedArticle node
+# Define a function that will set the embeddings property for a specified PubMedArticle node
 def set_embeddings_property(pmid, embeddings):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
@@ -232,8 +231,8 @@ def delete_pubmed_node(pmid):
         session.run(query, id_value=pmid)
         print(f"Deleted PubMed ID: {pmid}")
 
-
-def update_needs_references_property(pmid):
+# set the needs_references property to FALSE for a PubMedArticle node
+def negate_needs_references_property(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value, and sets the new properties
@@ -247,9 +246,9 @@ def update_needs_references_property(pmid):
 
 # If a placeholderPubMedArticle node represents a book rather than a journal article, the needs_properties property will be set to FALSE
 # This prevents the node from being selected for processing by the PubMedXMLFunctions.py script
-
-
-def turn_off_properties_flags(pmid):
+# The needs_references property will also be set to FALSE to prevent the node from being selected
+# for processing by the PubMedReferenceImporter.py script
+def negate_needs_props_and_refs(pmid):
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value, and sets the new properties
@@ -261,12 +260,12 @@ def turn_off_properties_flags(pmid):
 
     # Define a function that will determine if there are any nodes in the database that have the needs_properties property set to TRUE
 
-
-def needs_properties():
+# This function is used by the BatchPubMedDataImporter.py script to determine if there are any nodes that need to be processed
+def needs_properties_nodes_exist():
     # Use a context manager to create a session with the driver
     with driver.session() as session:
-        # Construct a query that matches the node by label and identifier property and value, and sets the new properties
-        query = "MATCH (n:PubMedArticle) WHERE n.needs_properties = TRUE RETURN n.pub_id as pub_id"
+        # Constrct a Neo4j query that detemines if there are any PubMedArticle nodes that have the needs_properties property set to TRUE
+        query = "MATCH (n:PubMedArticle) WHERE n.needs_properties = TRUE RETURN COUNT(n) > 0 AS result"
         # Run the query with the parameters
         result = session.run(query)
         # Return True if the result contains a record
@@ -274,11 +273,12 @@ def needs_properties():
 
 
 # define a function that detertmines if there are any PubMedArticle nodes in the database where the embeddings property id null
-def needs_embeddings():
+def needs_embeddiings_nodes_exist():
     # Use a context manager to create a session with the driver
     with driver.session() as session:
         # Construct a query that matches the node by label and identifier property and value
-        query = "MATCH (n:PubMedArticle) WHERE n.embeddings IS NULL RETURN n.pub_id as pub_id"
+        query = ("MATCH (p:PubMedArticle) WHERE p.abstract IS NOT NULL AND"
+                 " p.abstract <> '' AND p.embeddings IS NULL RETURN COUNT(p) > 0 AS result")
         # Run the query with the parameters
         result = session.run(query)
         # Return True if the result contains a record

@@ -1,6 +1,7 @@
 import requests
 import xml.etree.ElementTree as ET
 import PubMedNeo4jFunctions as pmf
+import Llama2_embedding_service as llama2
 
 # Define a function that takes in a List of pubmed ids and returns a list of PubmedArticle XML elements
 
@@ -55,12 +56,15 @@ def fetch_pubmed_data(pubmed_ids):
 def parse_pubmed_articles_from_xml(response):
     # Check if the response status code is 200 (OK)
     if response.status_code == 200:
+        try:
         # Parse the XML content of the response
-        root = ET.fromstring(response.content)
-        pubmed_articles = root.findall("PubmedArticle")
-        print(
-            f"***** At parse_pubmed_articles_from_xml: number of articles is  {len(pubmed_articles)}")
-        return pubmed_articles
+            root = ET.fromstring(response.content)
+            pubmed_articles = root.findall("PubmedArticle")
+            print(f"***** At parse_pubmed_articles_from_xml: number of articles is  {len(pubmed_articles)}")
+            return pubmed_articles
+        except ET.ParseError as e:
+            print(f"***** At parse_pubmed_articles_from_xml: error is {e}")
+            return None
     else:
         # Print the status code
         print(response.status_code)
@@ -98,8 +102,13 @@ def extract_pubmed_data(pubmed_article):
     # extract the reference IDs from each article
     references = extract_reference_ids(pubmed_article)
 
-    # Return the data as a dictionary
-    return {"pmid": pmid, "url": url, "title": title, "abstract": abstract, "journal": journal,
+    # Return the data as a dictionary depending on whether the abstract is empty or not
+    if abstract != "" and abstract is not None:
+        embeddings = llama2.generate_embedding(abstract)
+        return {"pmid": pmid, "url": url, "title": title, "abstract": abstract, "journal": journal,
+            "volume": volume, "issue": issue, "year": year, "authors": authors, "pmc_id": pmc_id,
+            "pmc_url": pmc_url, "doi": doi, "references": references, "needs_properties": False, "embeddings": embeddings}
+    return {"pmid": pmid, "url": url, "title": title, "journal": journal,
             "volume": volume, "issue": issue, "year": year, "authors": authors, "pmc_id": pmc_id,
             "pmc_url": pmc_url, "doi": doi, "references": references, "needs_properties": False}
 
@@ -168,7 +177,7 @@ def extract_author_names(pubmed_article):
 
 def persist_pubmed_data(pubmed_data):
     print(f"***** At persist_pubmed_data: ids are {pubmed_data['pmid']}")
-    label = "Publication"
+    label = "PubMedArticle"
     id_prop = "pub_id"
     id_value = int(pubmed_data["pmid"]
                    ) if pubmed_data["pmid"] is not None else 0

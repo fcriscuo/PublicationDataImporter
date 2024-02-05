@@ -10,13 +10,12 @@ driver = GraphDatabase.driver(uri, auth=(user, password))
 print(f"Neo4j Driver created: {driver}")
 # define a function to process a reference identifier
 
-
 def process_reference(pubmed_id, reference_id):
     print(
         f"Processing reference {reference_id} for PubMed article {pubmed_id}")
     # create a session object
     with driver.session() as session:
-        # define a cypher query to check if the reference identifier already exists as a Publication node
+        # define a cypher query to check if the reference identifier already exists as a PubMedArticle node
         check_query = """
         MATCH (p:PubMedArticle)
         WHERE p.pub_id = $reference_id
@@ -26,30 +25,8 @@ def process_reference(pubmed_id, reference_id):
         result = session.run(check_query, reference_id=reference_id)
         # get the first record from the result object
         record = result.single()
-        # if the record is not None, it means the reference identifier already exists as a PubMedArticle node
-        if record is not None:
-            # get the node from the record
-            node = record["p"]
-            # check if the node already has the Reference label
-            if "Reference" in node.labels:
-                # do nothing
-                pass
-            else:
-                # add the Reference label to the node
-                add_label_query = """
-                MATCH (p:PubMedArticle)
-                WHERE p.pub_id = $reference_id
-                SET p:Reference
-                """
-                try:
-                    session.run(add_label_query, reference_id=reference_id)
-                except Exception as e:
-                    print(
-                        f"Exception adding label to node {reference_id}: {e}")
-                else:
-                    # print a message that the label was added
-                    print(f"Reference label added to node {reference_id}")
-        else:
+        # check if the record is None
+        if record is None:
             # create a new node with the labels PubMedArticle label and the properties pub_id, need_properties, and needs_references
             create_node_query = """
             CREATE (r:PubMedArticle {pub_id: $reference_id, need_properties: true, needs_references: false})
